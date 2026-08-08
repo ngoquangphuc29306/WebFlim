@@ -18,7 +18,7 @@ export const watchlistGateway = {
       .from('watchlist')
       .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('client_updated_at', { ascending: false });
 
     if (error) {
       console.warn('[WatchlistGateway] Failed to list items:', error.message);

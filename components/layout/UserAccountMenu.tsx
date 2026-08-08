@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth/auth-context';
-import { User as UserIcon, LogOut, RefreshCw, CheckCircle, AlertTriangle, Cloud, Bookmark, History } from 'lucide-react';
+import { User as UserIcon, LogOut, RefreshCw, CheckCircle, AlertTriangle, Cloud, Bookmark, History, WifiOff } from 'lucide-react';
 
 export default function UserAccountMenu() {
   const { user, signOut, syncStatus } = useAuth();
@@ -68,6 +68,8 @@ export default function UserAccountMenu() {
               ? 'bg-amber-400 animate-pulse'
               : syncStatus === 'error'
               ? 'bg-rose-500'
+              : syncStatus === 'offline'
+              ? 'bg-sky-400'
               : 'bg-neutral-500'
           }`}
           title={
@@ -77,7 +79,9 @@ export default function UserAccountMenu() {
               ? 'Đang đồng bộ...'
               : syncStatus === 'error'
               ? 'Lỗi đồng bộ'
-              : 'Ngoại tuyến'
+              : syncStatus === 'offline'
+              ? 'Chế độ ngoại tuyến'
+              : 'Trạng thái chờ'
           }
         />
       </button>
@@ -107,6 +111,12 @@ export default function UserAccountMenu() {
                 <>
                   <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <span className="text-rose-300">Chưa thể đồng bộ (đã lưu trên máy)</span>
+                </>
+              )}
+              {syncStatus === 'offline' && (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="text-sky-300">Ngoại tuyến (đã lưu trên máy)</span>
                 </>
               )}
               {syncStatus === 'idle' && (

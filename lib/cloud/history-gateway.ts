@@ -18,7 +18,7 @@ export const historyGateway = {
       .from('watch_history')
       .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('client_updated_at', { ascending: false });
 
     if (error) {
       console.warn('[HistoryGateway] Failed to list items:', error.message);

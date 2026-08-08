@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS public.watchlist (
   categories_json TEXT,
   countries_json TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  client_updated_at TIMESTAMPTZ NOT NULL,
+  server_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT watchlist_user_movie_unique UNIQUE (user_id, movie_slug)
 );
 
@@ -70,7 +71,8 @@ CREATE TABLE IF NOT EXISTS public.watch_history (
   server_index INT,
   server_name TEXT,
   watched_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  client_updated_at TIMESTAMPTZ NOT NULL,
+  server_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT watch_history_user_movie_unique UNIQUE (user_id, movie_slug)
 );
 
@@ -88,7 +90,7 @@ CREATE POLICY "Users can update own watch history" ON public.watch_history
 CREATE POLICY "Users can delete own watch history" ON public.watch_history
   FOR DELETE USING (auth.uid() = user_id);
 
-CREATE INDEX IF NOT EXISTS idx_watch_history_user_updated ON public.watch_history(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_watch_history_user_updated ON public.watch_history(user_id, client_updated_at DESC);
 
 -- 4. PLAYBACK PROGRESS
 CREATE TABLE IF NOT EXISTS public.playback_progress (
@@ -104,7 +106,9 @@ CREATE TABLE IF NOT EXISTS public.playback_progress (
   current_time DOUBLE PRECISION NOT NULL DEFAULT 0,
   duration DOUBLE PRECISION NOT NULL DEFAULT 0,
   completed BOOLEAN NOT NULL DEFAULT FALSE,
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  client_updated_at TIMESTAMPTZ NOT NULL,
+  server_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT playback_progress_user_ep_unique UNIQUE (user_id, movie_slug, episode_slug)
 );
 
@@ -122,7 +126,7 @@ CREATE POLICY "Users can update own playback progress" ON public.playback_progre
 CREATE POLICY "Users can delete own playback progress" ON public.playback_progress
   FOR DELETE USING (auth.uid() = user_id);
 
-CREATE INDEX IF NOT EXISTS idx_playback_progress_user_updated ON public.playback_progress(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_playback_progress_user_updated ON public.playback_progress(user_id, client_updated_at DESC);
 
 -- 5. PLAYER PREFERENCES
 CREATE TABLE IF NOT EXISTS public.player_preferences (
@@ -131,7 +135,8 @@ CREATE TABLE IF NOT EXISTS public.player_preferences (
   muted BOOLEAN DEFAULT FALSE,
   playback_rate DOUBLE PRECISION DEFAULT 1.0,
   autoplay_next_episode BOOLEAN DEFAULT TRUE,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  client_updated_at TIMESTAMPTZ NOT NULL,
+  server_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE public.player_preferences ENABLE ROW LEVEL SECURITY;
@@ -148,8 +153,29 @@ CREATE POLICY "Users can update own player preferences" ON public.player_prefere
 CREATE POLICY "Users can delete own player preferences" ON public.player_preferences
   FOR DELETE USING (auth.uid() = user_id);
 
--- 6. AUTOMATIC UPDATED_AT TRIGGER FUNCTION
-CREATE OR REPLACE FUNCTION public.set_updated_at()
+-- 6. AUTOMATIC SERVER_UPDATED_AT TRIGGER FUNCTION
+CREATE OR REPLACE FUNCTION public.set_server_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.server_updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_watchlist_server_updated_at ON public.watchlist;
+CREATE TRIGGER set_watchlist_server_updated_at BEFORE UPDATE ON public.watchlist FOR EACH ROW EXECUTE FUNCTION public.set_server_updated_at();
+
+DROP TRIGGER IF EXISTS set_watch_history_server_updated_at ON public.watch_history;
+CREATE TRIGGER set_watch_history_server_updated_at BEFORE UPDATE ON public.watch_history FOR EACH ROW EXECUTE FUNCTION public.set_server_updated_at();
+
+DROP TRIGGER IF EXISTS set_playback_progress_server_updated_at ON public.playback_progress;
+CREATE TRIGGER set_playback_progress_server_updated_at BEFORE UPDATE ON public.playback_progress FOR EACH ROW EXECUTE FUNCTION public.set_server_updated_at();
+
+DROP TRIGGER IF EXISTS set_player_preferences_server_updated_at ON public.player_preferences;
+CREATE TRIGGER set_player_preferences_server_updated_at BEFORE UPDATE ON public.player_preferences FOR EACH ROW EXECUTE FUNCTION public.set_server_updated_at();
+
+-- PROFILES UPDATED AT TRIGGER
+CREATE OR REPLACE FUNCTION public.set_profiles_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -158,16 +184,5 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS set_profiles_updated_at ON public.profiles;
-CREATE TRIGGER set_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+CREATE TRIGGER set_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.set_profiles_updated_at();
 
-DROP TRIGGER IF EXISTS set_watchlist_updated_at ON public.watchlist;
-CREATE TRIGGER set_watchlist_updated_at BEFORE UPDATE ON public.watchlist FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-DROP TRIGGER IF EXISTS set_watch_history_updated_at ON public.watch_history;
-CREATE TRIGGER set_watch_history_updated_at BEFORE UPDATE ON public.watch_history FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-DROP TRIGGER IF EXISTS set_playback_progress_updated_at ON public.playback_progress;
-CREATE TRIGGER set_playback_progress_updated_at BEFORE UPDATE ON public.playback_progress FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-DROP TRIGGER IF EXISTS set_player_preferences_updated_at ON public.player_preferences;
-CREATE TRIGGER set_player_preferences_updated_at BEFORE UPDATE ON public.player_preferences FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

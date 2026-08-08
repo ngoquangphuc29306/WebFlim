@@ -24,15 +24,52 @@ export function isValidSyncMutation(item: any): item is SyncMutation {
   if (typeof item.id !== 'string' || !item.id) return false;
   if (!VALID_DOMAINS.has(item.domain)) return false;
   if (!VALID_ACTIONS.has(item.action)) return false;
-  if (typeof item.createdAt !== 'number') return false;
+  if (typeof item.createdAt !== 'number' || !isFinite(item.createdAt)) return false;
+  if (item.updatedAt !== undefined && (typeof item.updatedAt !== 'number' || !isFinite(item.updatedAt))) return false;
   if (item.ownerUserId !== null && typeof item.ownerUserId !== 'string') return false;
+
+  // Domain-specific validation
+  if (item.domain === 'watchlist') {
+    if (item.action === 'upsert') {
+      if (typeof item.movieSlug !== 'string' || !item.movieSlug) return false;
+      if (!item.payload || typeof item.payload !== 'object' || typeof item.payload.slug !== 'string') return false;
+    } else if (item.action === 'remove') {
+      if (typeof item.movieSlug !== 'string' || !item.movieSlug) return false;
+    }
+  } else if (item.domain === 'history') {
+    if (item.action === 'upsert') {
+      if (typeof item.movieSlug !== 'string' || !item.movieSlug) return false;
+      if (!item.payload || typeof item.payload !== 'object' || typeof item.payload.slug !== 'string') return false;
+    } else if (item.action === 'remove') {
+      if (typeof item.movieSlug !== 'string' || !item.movieSlug) return false;
+    }
+  } else if (item.domain === 'progress') {
+    if (item.action === 'upsert') {
+      if (typeof item.movieSlug !== 'string' || !item.movieSlug) return false;
+      if (typeof item.episodeSlug !== 'string' || !item.episodeSlug) return false;
+      if (!item.payload || typeof item.payload !== 'object') return false;
+    } else if (item.action === 'remove') {
+      if (typeof item.movieSlug !== 'string' || !item.movieSlug) return false;
+    }
+  } else if (item.domain === 'preferences') {
+    if (item.action === 'upsert') {
+      if (!item.payload || typeof item.payload !== 'object') return false;
+      if (typeof item.payload.volume !== 'number' || !isFinite(item.payload.volume)) return false;
+      if (typeof item.payload.playbackRate !== 'number' || !isFinite(item.payload.playbackRate)) return false;
+    }
+  }
+
   return true;
 }
 
 export function getSyncQueue(): SyncMutation[] {
-  const raw = safeReadJson<unknown>(STORAGE_KEYS.syncQueue, []);
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(isValidSyncMutation);
+  try {
+    const raw = safeReadJson<unknown>(STORAGE_KEYS.syncQueue, []);
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(isValidSyncMutation);
+  } catch {
+    return [];
+  }
 }
 
 export function saveSyncQueue(queue: SyncMutation[]): void {
@@ -97,6 +134,25 @@ export function clearQueueForUser(userId: string | null): void {
   const queue = getSyncQueue();
   const updated = queue.filter((m) => m.ownerUserId !== userId);
   saveSyncQueue(updated);
+}
+
+export function rebindGuestMutationsToUser(userId: string): void {
+  const queue = getSyncQueue();
+  let modified = false;
+  const updated = queue.map((m) => {
+    if (m.ownerUserId === null) {
+      modified = true;
+      return { ...m, ownerUserId: userId };
+    }
+    return m;
+  });
+  if (modified) {
+    saveSyncQueue(updated);
+  }
+}
+
+export function clearGuestMutations(): void {
+  clearQueueForUser(null);
 }
 
 export function getPendingMutationsForUser(userId: string | null): SyncMutation[] {

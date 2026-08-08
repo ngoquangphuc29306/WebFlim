@@ -18,7 +18,7 @@ export const progressGateway = {
       .from('playback_progress')
       .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('client_updated_at', { ascending: false });
 
     if (error) {
       console.warn('[ProgressGateway] Failed to list items:', error.message);

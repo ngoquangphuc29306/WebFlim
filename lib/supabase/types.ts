@@ -24,7 +24,8 @@ export interface DbWatchlistRow {
   categories_json: string | null;
   countries_json: string | null;
   created_at: string;
-  updated_at: string;
+  client_updated_at: string;
+  server_updated_at: string;
 }
 
 export interface DbWatchHistoryRow {
@@ -38,7 +39,8 @@ export interface DbWatchHistoryRow {
   server_index: number | null;
   server_name: string | null;
   watched_at: string;
-  updated_at: string;
+  client_updated_at: string;
+  server_updated_at: string;
 }
 
 export interface DbPlaybackProgressRow {
@@ -54,7 +56,9 @@ export interface DbPlaybackProgressRow {
   current_time: number;
   duration: number;
   completed: boolean;
-  updated_at: string;
+  created_at: string;
+  client_updated_at: string;
+  server_updated_at: string;
 }
 
 export interface DbPlayerPreferencesRow {
@@ -63,7 +67,8 @@ export interface DbPlayerPreferencesRow {
   muted: boolean;
   playback_rate: number;
   autoplay_next_episode: boolean;
-  updated_at: string;
+  client_updated_at: string;
+  server_updated_at: string;
 }
 
 // Domain Mappers
@@ -92,7 +97,7 @@ export function mapDbToWatchlistItem(row: DbWatchlistRow): MovieCardModel {
   };
 }
 
-export function mapWatchlistItemToDb(userId: string, item: MovieCardModel): Omit<DbWatchlistRow, 'id' | 'created_at' | 'updated_at'> {
+export function mapWatchlistItemToDb(userId: string, item: MovieCardModel): Omit<DbWatchlistRow, 'id' | 'created_at' | 'server_updated_at'> {
   return {
     user_id: userId,
     movie_slug: item.slug,
@@ -105,6 +110,7 @@ export function mapWatchlistItemToDb(userId: string, item: MovieCardModel): Omit
     quality: item.quality || null,
     categories_json: JSON.stringify(item.categories || []),
     countries_json: JSON.stringify(item.countries || []),
+    client_updated_at: new Date().toISOString(),
   };
 }
 
@@ -117,11 +123,11 @@ export function mapDbToWatchHistoryItem(row: DbWatchHistoryRow): WatchHistoryIte
     episodeName: row.episode_name || '',
     serverName: row.server_name || '',
     serverIndex: row.server_index ?? undefined,
-    updatedAt: new Date(row.updated_at || row.watched_at).getTime(),
+    updatedAt: new Date(row.client_updated_at || row.watched_at).getTime(),
   };
 }
 
-export function mapWatchHistoryItemToDb(userId: string, item: WatchHistoryItem): Omit<DbWatchHistoryRow, 'id' | 'created_at'> {
+export function mapWatchHistoryItemToDb(userId: string, item: WatchHistoryItem): Omit<DbWatchHistoryRow, 'id' | 'created_at' | 'server_updated_at'> {
   const isoTime = new Date(item.updatedAt || Date.now()).toISOString();
   return {
     user_id: userId,
@@ -133,7 +139,7 @@ export function mapWatchHistoryItemToDb(userId: string, item: WatchHistoryItem):
     server_index: item.serverIndex ?? null,
     server_name: item.serverName || null,
     watched_at: isoTime,
-    updated_at: isoTime,
+    client_updated_at: isoTime,
   };
 }
 
@@ -149,11 +155,11 @@ export function mapDbToPlaybackProgress(row: DbPlaybackProgressRow): PlaybackPro
     currentTime: row.current_time,
     duration: row.duration,
     completed: row.completed,
-    updatedAt: new Date(row.updated_at).getTime(),
+    updatedAt: new Date(row.client_updated_at).getTime(),
   };
 }
 
-export function mapPlaybackProgressToDb(userId: string, item: PlaybackProgress): Omit<DbPlaybackProgressRow, 'id'> {
+export function mapPlaybackProgressToDb(userId: string, item: PlaybackProgress): Omit<DbPlaybackProgressRow, 'id' | 'created_at' | 'server_updated_at'> {
   return {
     user_id: userId,
     movie_slug: item.movieSlug,
@@ -166,7 +172,7 @@ export function mapPlaybackProgressToDb(userId: string, item: PlaybackProgress):
     current_time: item.currentTime,
     duration: item.duration,
     completed: item.completed,
-    updated_at: new Date(item.updatedAt || Date.now()).toISOString(),
+    client_updated_at: new Date(item.updatedAt || Date.now()).toISOString(),
   };
 }
 
@@ -180,17 +186,17 @@ export function mapDbToPlayerPreferences(row: DbPlayerPreferencesRow): PlayerPre
     muted: Boolean(row.muted),
     playbackRate: rate,
     autoplayNextEpisode: row.autoplay_next_episode !== false,
-    updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
+    updatedAt: row.client_updated_at ? new Date(row.client_updated_at).getTime() : undefined,
   };
 }
 
-export function mapPlayerPreferencesToDb(userId: string, prefs: PlayerPreferences): DbPlayerPreferencesRow {
+export function mapPlayerPreferencesToDb(userId: string, prefs: PlayerPreferences): Omit<DbPlayerPreferencesRow, 'server_updated_at'> {
   return {
     user_id: userId,
     volume: prefs.volume,
     muted: prefs.muted,
     playback_rate: prefs.playbackRate,
     autoplay_next_episode: prefs.autoplayNextEpisode,
-    updated_at: new Date(prefs.updatedAt || Date.now()).toISOString(),
+    client_updated_at: new Date(prefs.updatedAt || Date.now()).toISOString(),
   };
 }

@@ -2,7 +2,7 @@ import { watchlistGateway } from '@/lib/cloud/watchlist-gateway';
 import { historyGateway } from '@/lib/cloud/history-gateway';
 import { progressGateway } from '@/lib/cloud/progress-gateway';
 import { preferencesGateway } from '@/lib/cloud/preferences-gateway';
-import { getSyncMeta, updateSyncMeta } from './sync-meta';
+import { getSyncMeta, updateSyncMeta, setLocalStateOwner } from './sync-meta';
 import {
   mergeWatchlist,
   mergeHistory,
@@ -21,24 +21,42 @@ import {
   enqueueMutation,
   getPendingMutationsForUser,
   dequeueMutation,
+  rebindGuestMutationsToUser,
+  clearGuestMutations,
   SyncMutation,
 } from './sync-queue';
 
-export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
+export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
+
+interface DirtyProgressEntry {
+  ownerUserId: string | null;
+  progress: PlaybackProgress;
+}
+
+interface PendingDebouncedPrefs {
+  ownerUserId: string | null;
+  prefs: PlayerPreferences;
+  generation: number;
+}
 
 class SyncEngine {
   private currentUserId: string | null = null;
   private activeSyncUserId: string | null = null;
   private syncGeneration = 0;
   private lastFocusSyncTime = 0;
+  private hasHydratedCurrentUser = false;
 
   private syncStatus: SyncStatus = 'idle';
-  private dirtyProgress: Map<string, PlaybackProgress> = new Map();
+  private dirtyProgress: Map<string, DirtyProgressEntry> = new Map();
   private progressFlushTimer: NodeJS.Timeout | null = null;
+
   private prefsDebounceTimer: NodeJS.Timeout | null = null;
-  private pendingDebouncedPrefs: PlayerPreferences | null = null;
+  private pendingDebouncedPrefs: PendingDebouncedPrefs | null = null;
 
   private activeSyncPromise: Promise<void> | null = null;
+  private pendingFollowUpSyncUserId: string | null = null;
+  private syncRequestedWhileActive = false;
+
   private listenersAttached = false;
   private statusListeners: Set<(status: SyncStatus) => void> = new Set();
 
@@ -65,8 +83,9 @@ class SyncEngine {
         const pendingCount = getPendingMutationsForUser(this.currentUserId).length;
         const needsSync =
           this.syncStatus === 'error' ||
+          this.syncStatus === 'offline' ||
           pendingCount > 0 ||
-          this.dirtyProgress.size > 0 ||
+          this.getDirtyProgressCountForUser(this.currentUserId) > 0 ||
           now - this.lastFocusSyncTime >= cooldown;
 
         if (needsSync) {
@@ -100,24 +119,76 @@ class SyncEngine {
   public async handleAuthChange(userId: string | null) {
     if (!isBrowser()) return;
 
-    this.syncGeneration++;
-    const currentGen = this.syncGeneration;
-
-    if (!userId) {
-      // Guest mode / user logged out
-      this.currentUserId = null;
-      this.activeSyncUserId = null;
-      this.setStatus('idle');
-      this.stopProgressFlushTimer();
-      this.dirtyProgress.clear();
-      // INVARIANT: DO NOT DELETE LOCAL STORAGE REPOSITORIES!
-      // Guest local data MUST remain preserved in localStorage.
+    // Same-user auth events (e.g. TOKEN_REFRESHED)
+    if (this.currentUserId === userId) {
+      if (userId) {
+        this.startProgressFlushTimer();
+        const pending = getPendingMutationsForUser(userId).length;
+        const dirty = this.getDirtyProgressCountForUser(userId);
+        if (!this.hasHydratedCurrentUser || pending > 0 || dirty > 0 || this.syncStatus === 'error' || this.syncStatus === 'offline') {
+          this.triggerSync();
+        }
+      }
       return;
     }
 
-    // User logged in / restored
+    // Identity CHANGED (null -> A, A -> B, A -> null)
+    const previousUserId = this.currentUserId;
+    this.syncGeneration++;
+    const currentGen = this.syncGeneration;
+    this.hasHydratedCurrentUser = false;
+
+    // Flush pending debounced preferences for previous user if any
+    if (this.pendingDebouncedPrefs && this.pendingDebouncedPrefs.ownerUserId === previousUserId) {
+      enqueueMutation({
+        ownerUserId: previousUserId,
+        domain: 'preferences',
+        action: 'upsert',
+        payload: this.pendingDebouncedPrefs.prefs,
+      });
+      this.pendingDebouncedPrefs = null;
+      if (this.prefsDebounceTimer) {
+        clearTimeout(this.prefsDebounceTimer);
+        this.prefsDebounceTimer = null;
+      }
+    }
+
+    // Persist dirty progress for previous user before identity change
+    this.flushDirtyProgressToQueue(previousUserId);
+    this.dirtyProgress.clear();
+
+    const meta = getSyncMeta();
+
+    if (!userId) {
+      // User A -> Logout -> Guest
+      setLocalStateOwner(null, previousUserId);
+      this.currentUserId = null;
+      this.setStatus('idle');
+      this.stopProgressFlushTimer();
+      return;
+    }
+
+    // Guest -> User (or User A -> User B)
+    if (previousUserId === null) {
+      const baseUser = meta.guestMutationBaseUserId;
+      if (!baseUser) {
+        // Pure Guest -> User A: adopt guest mutations
+        rebindGuestMutationsToUser(userId);
+      } else if (baseUser === userId) {
+        // User A -> Logout -> Guest -> User A: adopt guest mutations
+        rebindGuestMutationsToUser(userId);
+      } else {
+        // User A -> Logout -> Guest -> User B (B !== A):
+        // Rebind guest mutations back to baseUser (A), so they stay owned by A and NOT B
+        rebindGuestMutationsToUser(baseUser);
+        // Clear local storage repositories so B gets B's workspace
+        this.clearLocalStorageRepositories();
+      }
+    }
+
+    // Establish local state owner for target user immediately!
+    setLocalStateOwner(userId, null);
     this.currentUserId = userId;
-    this.activeSyncUserId = userId;
     this.startProgressFlushTimer();
 
     await this.triggerSync(userId, currentGen);
@@ -132,25 +203,55 @@ class SyncEngine {
 
     const targetGen = gen !== undefined ? gen : this.syncGeneration;
 
-    if (this.activeSyncPromise && this.activeSyncUserId === targetUserId) {
-      return this.activeSyncPromise;
+    if (this.activeSyncPromise) {
+      if (this.activeSyncUserId === targetUserId) {
+        // Active sync running for THIS exact user! Record mid-sync mutation follow-up request.
+        this.syncRequestedWhileActive = true;
+        return this.activeSyncPromise;
+      } else {
+        // Active sync running for a DIFFERENT user! Wait for active promise to finish then run for targetUserId.
+        this.pendingFollowUpSyncUserId = targetUserId;
+        return this.activeSyncPromise.then(() => {
+          if (this.currentUserId === targetUserId) {
+            return this.triggerSync(targetUserId);
+          }
+        });
+      }
     }
 
+    // Launch new execution for targetUserId
     this.activeSyncUserId = targetUserId;
-    this.activeSyncPromise = this.executeSync(targetUserId, targetGen).finally(() => {
-      if (this.activeSyncUserId === targetUserId) {
+    const promise = this.executeSync(targetUserId, targetGen).finally(() => {
+      if (this.activeSyncPromise === promise) {
         this.activeSyncPromise = null;
+        this.activeSyncUserId = null;
+      }
+
+      // Check if follow-up sync is needed
+      if (this.pendingFollowUpSyncUserId) {
+        const followUpUser = this.pendingFollowUpSyncUserId;
+        this.pendingFollowUpSyncUserId = null;
+        if (this.currentUserId === followUpUser) {
+          this.triggerSync(followUpUser);
+        }
+      } else if (this.syncRequestedWhileActive && this.currentUserId === targetUserId) {
+        this.syncRequestedWhileActive = false;
+        const remainingQueue = getPendingMutationsForUser(targetUserId);
+        if (remainingQueue.length > 0 || this.getDirtyProgressCountForUser(targetUserId) > 0) {
+          this.triggerSync(targetUserId);
+        }
       }
     });
 
-    return this.activeSyncPromise;
+    this.activeSyncPromise = promise;
+    return promise;
   }
 
   private async executeSync(userId: string, gen: number): Promise<void> {
     if (!isBrowser()) return;
 
     if (!navigator.onLine) {
-      this.setStatus('error');
+      this.setStatus('offline');
       return;
     }
 
@@ -158,8 +259,8 @@ class SyncEngine {
 
     try {
       const meta = getSyncMeta();
-      const isUserSwitch = meta.lastSyncedUserId !== null && meta.lastSyncedUserId !== userId;
-      const isFirstGuestLogin = meta.lastSyncedUserId === null;
+      const isUserSwitch = meta.localStateOwnerUserId !== null && meta.localStateOwnerUserId !== userId;
+      const isFirstGuestLogin = meta.localStateOwnerUserId === null && meta.guestMutationBaseUserId === null;
 
       if (isUserSwitch) {
         // User A -> User B: Clear User A's local state from storage for User B
@@ -167,7 +268,7 @@ class SyncEngine {
         // INVARIANT: Do NOT clear User A's queue! User A's queue remains stored under ownerUserId = A.
       }
 
-      // 1. Flush any dirty progress into queue as pending mutations
+      // 1. Flush any dirty progress for this user into queue as pending mutations
       this.flushDirtyProgressToQueue(userId);
 
       // 2. Flush queue for current user with bounded retry
@@ -339,15 +440,17 @@ class SyncEngine {
 
       this.ensureProfileUpsert(userId);
       updateSyncMeta(userId);
+      this.hasHydratedCurrentUser = true;
 
       // INVARIANT: Only set status 'synced' if queue is completely empty
       const remainingQueue = getPendingMutationsForUser(userId);
-      if (remainingQueue.length > 0 || this.dirtyProgress.size > 0) {
+      if (remainingQueue.length > 0 || this.getDirtyProgressCountForUser(userId) > 0) {
         this.setStatus('error');
       } else {
         this.setStatus('synced');
       }
     } catch (err) {
+      if (this.isStale(userId, gen)) return;
       console.warn('[SyncEngine] Sync error:', err);
       this.setStatus('error');
     }
@@ -458,7 +561,6 @@ class SyncEngine {
   // --- LOCAL ACTION HOOKS ---
 
   public onWatchlistAdd(item: MovieCardModel) {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'watchlist',
@@ -466,32 +568,35 @@ class SyncEngine {
       movieSlug: item.slug,
       payload: item,
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onWatchlistRemove(movieSlug: string) {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'watchlist',
       action: 'remove',
       movieSlug,
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onWatchlistClear() {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'watchlist',
       action: 'clear',
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onHistorySave(item: WatchHistoryItem) {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'history',
@@ -499,34 +604,37 @@ class SyncEngine {
       movieSlug: item.slug,
       payload: item,
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onHistoryRemove(movieSlug: string) {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'history',
       action: 'remove',
       movieSlug,
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onHistoryClear() {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'history',
       action: 'clear',
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onProgressSave(item: PlaybackProgress, immediate = false) {
-    if (!this.currentUserId) return;
     const key = `${item.movieSlug}:${item.episodeSlug}`;
-    this.dirtyProgress.set(key, item);
+    this.dirtyProgress.set(key, { ownerUserId: this.currentUserId, progress: item });
 
     if (immediate || item.completed) {
       this.flushDirtyProgress();
@@ -534,7 +642,6 @@ class SyncEngine {
   }
 
   public onProgressRemove(movieSlug: string, episodeSlug?: string) {
-    if (!this.currentUserId) return;
     const key = episodeSlug ? `${movieSlug}:${episodeSlug}` : movieSlug;
     enqueueMutation({
       ownerUserId: this.currentUserId,
@@ -544,38 +651,48 @@ class SyncEngine {
       episodeSlug,
       key,
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onProgressClear() {
-    if (!this.currentUserId) return;
     enqueueMutation({
       ownerUserId: this.currentUserId,
       domain: 'progress',
       action: 'clear',
     });
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
   }
 
   public onPreferencesSave(prefs: PlayerPreferences) {
-    if (!this.currentUserId) return;
+    const ownerUserId = this.currentUserId;
+    const capturedGen = this.syncGeneration;
+    this.pendingDebouncedPrefs = { ownerUserId, prefs, generation: capturedGen };
 
-    this.pendingDebouncedPrefs = prefs;
     if (this.prefsDebounceTimer) {
       clearTimeout(this.prefsDebounceTimer);
     }
 
     this.prefsDebounceTimer = setTimeout(() => {
-      if (this.currentUserId && this.pendingDebouncedPrefs) {
-        const targetPrefs = this.pendingDebouncedPrefs;
+      if (
+        this.pendingDebouncedPrefs &&
+        this.pendingDebouncedPrefs.ownerUserId === ownerUserId &&
+        this.syncGeneration === capturedGen
+      ) {
+        const targetPrefs = this.pendingDebouncedPrefs.prefs;
         this.pendingDebouncedPrefs = null;
         enqueueMutation({
-          ownerUserId: this.currentUserId,
+          ownerUserId,
           domain: 'preferences',
           action: 'upsert',
           payload: targetPrefs,
         });
-        this.triggerSync();
+        if (ownerUserId) {
+          this.triggerSync(ownerUserId);
+        }
       }
     }, 500);
   }
@@ -596,28 +713,39 @@ class SyncEngine {
     }
   }
 
-  private flushDirtyProgressToQueue(userId: string) {
+  private flushDirtyProgressToQueue(userId: string | null) {
     if (this.dirtyProgress.size === 0) return;
 
-    const items = Array.from(this.dirtyProgress.values());
-    this.dirtyProgress.clear();
-
-    for (const item of items) {
-      enqueueMutation({
-        ownerUserId: userId,
-        domain: 'progress',
-        action: 'upsert',
-        movieSlug: item.movieSlug,
-        episodeSlug: item.episodeSlug,
-        payload: item,
-      });
+    const keysToDelete: string[] = [];
+    for (const [key, entry] of this.dirtyProgress.entries()) {
+      if (entry.ownerUserId === userId) {
+        enqueueMutation({
+          ownerUserId: userId,
+          domain: 'progress',
+          action: 'upsert',
+          movieSlug: entry.progress.movieSlug,
+          episodeSlug: entry.progress.episodeSlug,
+          payload: entry.progress,
+        });
+        keysToDelete.push(key);
+      }
     }
+    keysToDelete.forEach((k) => this.dirtyProgress.delete(k));
   }
 
   public async flushDirtyProgress() {
-    if (!this.currentUserId || this.dirtyProgress.size === 0) return;
     this.flushDirtyProgressToQueue(this.currentUserId);
-    this.triggerSync();
+    if (this.currentUserId) {
+      this.triggerSync();
+    }
+  }
+
+  private getDirtyProgressCountForUser(userId: string | null): number {
+    let count = 0;
+    for (const entry of this.dirtyProgress.values()) {
+      if (entry.ownerUserId === userId) count++;
+    }
+    return count;
   }
 }
 

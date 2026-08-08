@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { syncEngine } from '@/lib/sync/sync-engine';
 import { sanitizeInternalReturnTo } from '@/lib/auth/return-to';
 
-export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
+export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
 interface AuthContextType {
   user: User | null;
