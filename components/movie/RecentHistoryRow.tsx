@@ -76,6 +76,7 @@ export default function RecentHistoryRow() {
                     }}
                     className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/70 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors"
                     title="Xóa khỏi Tiếp tục xem"
+                    aria-label={`Xóa ${item.movieTitle} tập ${item.episodeName || ''} khỏi Tiếp tục xem`}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -110,7 +111,14 @@ export default function RecentHistoryRow() {
                   </Link>
 
                   {/* Real progress bar */}
-                  <div className="mt-2.5 w-full bg-[#262626] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={progressPct}
+                    aria-label={`Đã xem ${progressPct}%`}
+                    className="mt-2.5 w-full bg-[#262626] h-1.5 rounded-full overflow-hidden"
+                  >
                     <div
                       className="bg-[#e50914] h-full rounded-full transition-all"
                       style={{ width: `${progressPct}%` }}
