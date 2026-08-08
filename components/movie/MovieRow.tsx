@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { MovieCardModel } from '@/types/movie';
+import { useMovieUserData } from '@/hooks/useMovieUserData';
 import MovieCard from './MovieCard';
 
 interface MovieRowProps {
@@ -15,6 +16,7 @@ interface MovieRowProps {
 
 export default function MovieRow({ title, movies, viewAllHref, icon }: MovieRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
+  const { savedSlugSet, progressMap } = useMovieUserData();
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
@@ -73,7 +75,11 @@ export default function MovieRow({ title, movies, viewAllHref, icon }: MovieRowP
               key={movie.slug}
               className="w-[135px] sm:w-[165px] md:w-[185px] lg:w-[205px] xl:w-[220px] shrink-0"
             >
-              <MovieCard movie={movie} />
+              <MovieCard
+                movie={movie}
+                isSaved={savedSlugSet.has(movie.slug)}
+                progressPercent={progressMap.get(movie.slug) || 0}
+              />
             </div>
           ))}
         </div>

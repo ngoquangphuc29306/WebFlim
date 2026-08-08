@@ -83,7 +83,7 @@ function LoginContent() {
 
         {!isConfigured && (
           <div className="mb-6 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs sm:text-sm leading-relaxed">
-            Lưu ý: Dự án Supabase chưa được kết nối biến môi trường (`NEXT_PUBLIC_SUPABASE_URL`). Bạn vẫn có thể dùng VSMov ở chế độ Khách (lưu dữ liệu trên thiết bị này).
+            Lưu ý: Dự án Supabase chưa được kết nối biến môi trường (`NEXT_PUBLIC_SUPABASE_URL`). Bạn vẫn có thể dùng PHEVO ở chế độ Khách (lưu dữ liệu trên thiết bị này).
           </div>
         )}
 
@@ -142,7 +142,7 @@ function LoginContent() {
             <span>Bảo mật 100% dữ liệu cá nhân</span>
           </div>
           <p className="text-neutral-500 text-[11px] leading-relaxed">
-            VSMov chỉ sử dụng tài khoản Google để xác thực và đồng bộ dữ liệu xem phim cá nhân. Bạn vẫn có thể xem phim hoàn toàn miễn phí mà không cần tạo tài khoản.
+            PHEVO chỉ sử dụng tài khoản Google để xác thực và đồng bộ dữ liệu xem phim cá nhân. Bạn vẫn có thể xem phim hoàn toàn miễn phí mà không cần tạo tài khoản.
           </p>
         </div>
       </div>

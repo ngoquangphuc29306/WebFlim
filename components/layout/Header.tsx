@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Search,
@@ -255,14 +256,22 @@ export default function Header({ genres = [], countries = [], years = [] }: Head
           {/* Logo */}
           <Link
             href="/"
-            aria-label="Trang chủ VSMov"
-            className="flex items-center gap-2 text-xl font-bold tracking-tight text-white group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded-lg"
+            aria-label="Trang chủ PHEVO"
+            className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded-lg"
           >
-            <div className="w-9 h-9 rounded-lg bg-[#e50914] flex items-center justify-center text-white shadow-lg shadow-[#e50914]/30 group-hover:scale-105 transition-transform duration-200">
-              <Play className="w-5 h-5 fill-current ml-0.5" />
+            <div className="relative h-9 w-auto min-w-[36px] flex items-center justify-center">
+              <Image
+                src="/logo.png"
+                alt="PHEVO Logo"
+                width={140}
+                height={36}
+                className="h-9 w-auto object-contain group-hover:scale-105 transition-transform duration-200"
+                priority
+                unoptimized
+              />
             </div>
             <span className="font-extrabold tracking-wider text-2xl">
-              VS<span className="text-[#e50914]">MOV</span>
+              PHE<span className="text-[#e50914]">VO</span>
             </span>
           </Link>
 

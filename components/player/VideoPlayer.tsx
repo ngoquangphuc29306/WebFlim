@@ -754,7 +754,7 @@ function VideoPlayerInner({
         ref={containerRef}
         tabIndex={0}
         onClick={handleContainerClick}
-        aria-label="Trình phát video VSMov"
+        aria-label="Trình phát video PHEVO"
         className="relative w-full aspect-video bg-[#050505] rounded-2xl overflow-hidden border border-[#222] shadow-2xl group focus:outline-none focus:ring-1 focus:ring-[#e50914]"
       >
         {/* Double-tap Seek Feedback Overlay */}

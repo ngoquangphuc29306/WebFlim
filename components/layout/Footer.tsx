@@ -1,27 +1,49 @@
 import React from 'react';
 import Link from 'next/link';
-import { Play, Shield } from 'lucide-react';
+import Image from 'next/image';
+import { Shield } from 'lucide-react';
+
+// Tách mảng dữ liệu ra khỏi UI để dễ dàng thêm/sửa link sau này
+const QUICK_LINKS = [
+  { label: 'Phim Lẻ Mới', href: '/danh-sach/phim-le' },
+  { label: 'Phim Bộ Đang Hot', href: '/danh-sach/phim-bo' },
+  { label: 'Phim Vietsub Subteam', href: '/danh-sach/subteam' },
+  { label: 'Phim Mới Cập Nhật', href: '/danh-sach/phim-moi' },
+];
+
+const TOP_GENRES = [
+  { label: 'Hành Động & Phiêu Lưu', href: '/the-loai/hanh-dong' },
+  { label: 'Hoạt Hình Anime', href: '/the-loai/hoat-hinh' },
+  { label: 'Kinh Dị & Giật Gân', href: '/the-loai/kinh-di' },
+  { label: 'Tình Cảm Lãng Mạn', href: '/the-loai/lang-man' },
+];
 
 export default function Footer() {
   return (
     <footer className="bg-[#050505] border-t border-[#1a1a1a] text-[#737373] text-sm pt-12 pb-8 mt-20">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#141414]">
+          
           {/* Brand Info */}
           <div className="space-y-4 sm:col-span-2 md:col-span-1">
             <Link
               href="/"
-              className="flex items-center gap-2 text-white font-bold text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded"
+              className="flex items-center gap-2.5 text-white font-bold text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded w-fit"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#e50914] flex items-center justify-center text-white shadow-md shadow-[#e50914]/30">
-                <Play className="w-4 h-4 fill-current ml-0.5" />
-              </div>
+              <Image
+                src="/logo.png"
+                alt="PHEVO Logo"
+                width={120}
+                height={32}
+                className="h-8 w-auto object-contain"
+                unoptimized
+              />
               <span className="font-extrabold tracking-wider text-xl">
-                VS<span className="text-[#e50914]">MOV</span>
+                PHE<span className="text-[#e50914]">VO</span>
               </span>
             </Link>
             <p className="text-xs leading-relaxed text-[#8c8c8c]">
-              Trải nghiệm xem phim trực tuyến đỉnh cao với giao diện hiện đại, tốc độ cực nhanh và chất lượng HD/4K sắc nét. Powered by VSMov API.
+              Trải nghiệm xem phim trực tuyến đỉnh cao với giao diện hiện đại, tốc độ cực nhanh và chất lượng HD/4K sắc nét. Powered by PHEVO API.
             </p>
           </div>
 
@@ -29,26 +51,13 @@ export default function Footer() {
           <div className="space-y-3">
             <h3 className="text-xs font-semibold text-[#f5f5f5] uppercase tracking-wider">Khám Phá</h3>
             <ul className="space-y-2 text-xs">
-              <li>
-                <Link href="/danh-sach/phim-le" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Phim Lẻ Mới
-                </Link>
-              </li>
-              <li>
-                <Link href="/danh-sach/phim-bo" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Phim Bộ Đang Hot
-                </Link>
-              </li>
-              <li>
-                <Link href="/danh-sach/subteam" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Phim Vietsub Subteam
-                </Link>
-              </li>
-              <li>
-                <Link href="/danh-sach/phim-moi" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Phim Mới Cập Nhật
-                </Link>
-              </li>
+              {QUICK_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -56,26 +65,13 @@ export default function Footer() {
           <div className="space-y-3">
             <h3 className="text-xs font-semibold text-[#f5f5f5] uppercase tracking-wider">Thể Loại Nổi Bật</h3>
             <ul className="space-y-2 text-xs">
-              <li>
-                <Link href="/the-loai/hanh-dong" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Hành Động & Phiêu Lưu
-                </Link>
-              </li>
-              <li>
-                <Link href="/the-loai/hoat-hinh" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Hoạt Hình Anime
-                </Link>
-              </li>
-              <li>
-                <Link href="/the-loai/kinh-di" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Kinh Dị & Giật Gân
-                </Link>
-              </li>
-              <li>
-                <Link href="/the-loai/lang-man" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
-                  Tình Cảm Lãng Mạn
-                </Link>
-              </li>
+              {TOP_GENRES.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -94,7 +90,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#737373]">
-          <p>© {new Date().getFullYear()} VSMov Stream. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} PHEVO Stream. All rights reserved.</p>
           <p className="flex items-center gap-1">
             Thiết kế dành cho trải nghiệm phim ảnh chuyên nghiệp
           </p>

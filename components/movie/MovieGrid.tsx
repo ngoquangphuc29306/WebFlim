@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MovieCardModel, VSMovPagination } from '@/types/movie';
+import { useMovieUserData } from '@/hooks/useMovieUserData';
 import MovieCard from './MovieCard';
 import Pagination from './Pagination';
 import EmptyState from '@/components/ui/EmptyState';
@@ -19,6 +20,8 @@ export default function MovieGrid({
   baseUrl,
   emptyMessage = 'Không tìm thấy bộ phim nào phù hợp.',
 }: MovieGridProps) {
+  const { savedSlugSet, progressMap } = useMovieUserData();
+
   if (!movies || movies.length === 0) {
     return (
       <EmptyState
@@ -33,7 +36,12 @@ export default function MovieGrid({
     <div className="space-y-8">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4 lg:gap-5">
         {movies.map((movie) => (
-          <MovieCard key={movie.slug} movie={movie} />
+          <MovieCard
+            key={movie.slug}
+            movie={movie}
+            isSaved={savedSlugSet.has(movie.slug)}
+            progressPercent={progressMap.get(movie.slug) || 0}
+          />
         ))}
       </div>
 

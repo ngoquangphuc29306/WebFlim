@@ -25,8 +25,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = titlesMap[slug] || 'Danh Sách Phim';
 
   return {
-    title: `${title} HD Vietsub | VSMov`,
-    description: `Danh sách ${title} tuyển chọn chất lượng cao, cập nhật nhanh nhất trên VSMov Stream.`,
+    title: `${title} HD Vietsub | PHEVO`,
+    description: `Danh sách ${title} tuyển chọn chất lượng cao, cập nhật nhanh nhất trên PHEVO Stream.`,
   };
 }
 

@@ -1,6 +1,6 @@
 {
-  "name": "VSMov Stream",
-  "description": "A modern, cinematic movie streaming platform powered by VSMov API.",
+  "name": "PHEVO Stream",
+  "description": "A modern, cinematic movie streaming platform powered by PHEVO API.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

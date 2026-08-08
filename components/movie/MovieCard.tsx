@@ -1,38 +1,26 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { memo } from 'react';
 import Link from 'next/link';
 import { Star, Play, Bookmark } from 'lucide-react';
 import { MovieCardModel } from '@/types/movie';
-import { useWatchlist, toggleWatchlist } from '@/lib/utils/favorites';
-import { usePlaybackProgress } from '@/lib/persistence/progress';
+import { toggleWatchlist } from '@/lib/utils/favorites';
 import MovieImage from '@/components/ui/MovieImage';
 import MovieBadge from '@/components/ui/MovieBadge';
 
-interface MovieCardProps {
+export interface MovieCardProps {
   movie: MovieCardModel;
   priority?: boolean;
+  isSaved?: boolean;
+  progressPercent?: number;
 }
 
-export default function MovieCard({ movie, priority = false }: MovieCardProps) {
-  const { isSaved, isMounted } = useWatchlist();
-  const saved = isMounted && isSaved(movie.slug);
-  const { progressList } = usePlaybackProgress();
-
-  // Find latest unfinished progress record for this movie
-  const progressRecord = useMemo(() => {
-    const matching = progressList.filter(
-      (p) => p.movieSlug === movie.slug && !p.completed && p.currentTime >= 10 && p.duration > 0
-    );
-    if (matching.length === 0) return null;
-    matching.sort((a, b) => b.updatedAt - a.updatedAt);
-    return matching[0];
-  }, [progressList, movie.slug]);
-
-  const progressPercent = progressRecord
-    ? Math.min(100, Math.max(0, Math.round((progressRecord.currentTime / progressRecord.duration) * 100)))
-    : 0;
-
+function MovieCardComponent({
+  movie,
+  priority = false,
+  isSaved = false,
+  progressPercent = 0,
+}: MovieCardProps) {
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -77,15 +65,15 @@ export default function MovieCard({ movie, priority = false }: MovieCardProps) {
           <button
             onClick={handleBookmarkClick}
             type="button"
-            aria-label={saved ? `Bỏ khỏi danh sách phim ${movie.title}` : `Thêm ${movie.title} vào danh sách`}
+            aria-label={isSaved ? `Bỏ khỏi danh sách phim ${movie.title}` : `Thêm ${movie.title} vào danh sách`}
             className={`pointer-events-auto p-2 sm:p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full transition-transform duration-150 active:scale-90 shadow-md ${
-              saved
+              isSaved
                 ? 'bg-[#e50914] text-white'
                 : 'bg-[#080808]/85 text-[#d4d4d4] hover:text-white hover:bg-[#080808]'
             }`}
-            title={saved ? 'Xóa khỏi danh sách yêu thích' : 'Thêm vào danh sách yêu thích'}
+            title={isSaved ? 'Xóa khỏi danh sách yêu thích' : 'Thêm vào danh sách yêu thích'}
           >
-            <Bookmark className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${saved ? 'fill-current' : ''}`} />
+            <Bookmark className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isSaved ? 'fill-current' : ''}`} />
           </button>
         </div>
 
@@ -155,3 +143,5 @@ export default function MovieCard({ movie, priority = false }: MovieCardProps) {
   );
 }
 
+const MovieCard = memo(MovieCardComponent);
+export default MovieCard;

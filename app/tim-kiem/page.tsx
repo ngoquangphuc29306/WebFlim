@@ -13,8 +13,8 @@ interface PageProps {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const { keyword } = await searchParams;
   return {
-    title: keyword ? `Tìm kiếm: "${keyword}" - VSMov Stream` : 'Tìm kiếm phim - VSMov Stream',
-    description: 'Tìm kiếm bộ phim yêu thích của bạn trên VSMov Stream.',
+    title: keyword ? `Tìm kiếm: "${keyword}" - PHEVO Stream` : 'Tìm kiếm phim - PHEVO Stream',
+    description: 'Tìm kiếm bộ phim yêu thích của bạn trên PHEVO Stream.',
     robots: {
       index: false,
       follow: true,

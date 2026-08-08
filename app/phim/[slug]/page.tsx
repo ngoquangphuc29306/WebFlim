@@ -18,13 +18,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!movie) {
     return {
-      title: 'Phim không tồn tại - VSMov Stream',
+      title: 'Phim không tồn tại - PHEVO Stream',
     };
   }
 
   return {
-    title: `${movie.title} ${movie.year ? `(${movie.year})` : ''} - Xem Phim HD Vietsub | VSMov`,
-    description: movie.synopsis || `Xem phim ${movie.title} vietsub thuyết minh miễn phí chất lượng cao trên VSMov.`,
+    title: `${movie.title} ${movie.year ? `(${movie.year})` : ''} - Xem Phim HD Vietsub | PHEVO`,
+    description: movie.synopsis || `Xem phim ${movie.title} vietsub thuyết minh miễn phí chất lượng cao trên PHEVO.`,
     openGraph: {
       title: movie.title,
       description: movie.synopsis,

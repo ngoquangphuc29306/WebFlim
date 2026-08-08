@@ -48,7 +48,7 @@ export default function MovieImage({
       >
         <Film className="w-8 h-8 sm:w-10 sm:h-10 text-[#404040] mb-2" />
         <span className="text-xs font-medium text-[#a3a3a3] line-clamp-2 px-1">
-          {title || alt || 'VSMov Cinema'}
+          {title || alt || 'PHEVO Cinema'}
         </span>
       </div>
     );

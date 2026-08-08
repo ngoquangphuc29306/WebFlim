@@ -13,7 +13,7 @@ import {
 import DiscoveryClientView from '@/components/movie/DiscoveryClientView';
 
 export const metadata: Metadata = {
-  title: 'Khám Phá Phim - Bộ Lọc Phim Thông Minh VSMov',
+  title: 'Khám Phá Phim - Bộ Lọc Phim Thông Minh PHEVO',
   description:
     'Lọc phim theo thể loại, quốc gia, năm sản xuất và loại phim nhanh chóng, chính xác nhất.',
 };

@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const genre = genres.find((g) => g.slug === slug);
 
   return {
-    title: `Phim Thể Loại ${genre ? genre.name : slug} HD Vietsub | VSMov`,
+    title: `Phim Thể Loại ${genre ? genre.name : slug} HD Vietsub | PHEVO`,
     description: `Xem danh sách phim thể loại ${genre ? genre.name : slug} cập nhật mới nhất với chất lượng HD/4K vietsub thuyết minh.`,
   };
 }

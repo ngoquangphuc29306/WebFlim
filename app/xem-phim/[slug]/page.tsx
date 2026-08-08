@@ -22,14 +22,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const { movie } = await getMovieDetail(slug);
 
   if (!movie) {
-    return { title: 'Xem phim - VSMov Stream' };
+    return { title: 'Xem phim - PHEVO Stream' };
   }
 
   const epTitle = ep ? `Tập ${ep.replace('tap-', '')}` : '';
 
   return {
-    title: `Xem Phim ${movie.title} ${epTitle} HD Vietsub | VSMov`,
-    description: `Xem phim ${movie.title} ${epTitle} vietsub thuyết minh tốc độ cao không giật lag trên VSMov.`,
+    title: `Xem Phim ${movie.title} ${epTitle} HD Vietsub | PHEVO`,
+    description: `Xem phim ${movie.title} ${epTitle} vietsub thuyết minh tốc độ cao không giật lag trên PHEVO.`,
   };
 }
 

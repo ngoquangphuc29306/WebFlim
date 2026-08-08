@@ -8,12 +8,17 @@ import { Providers } from '@/app/providers';
 import { getGenresList, getCountriesList, getYearsList } from '@/lib/api/vsmov';
 
 export const metadata: Metadata = {
-  title: 'VSMov Stream - Trải Nghiệm Xem Phim Trực Tuyến Đỉnh Cao',
+  title: 'PHEVO Stream - Trải Nghiệm Xem Phim Trực Tuyến Đỉnh Cao',
   description:
     'Website xem phim miễn phí chất lượng cao, cập nhật phim mới nhanh nhất với vietsub và thuyết minh chuẩn HD/4K.',
-  keywords: ['xem phim', 'phim vietsub', 'phim thuyet minh', 'vsmov', 'phim moi', 'phim online'],
+  keywords: ['xem phim', 'phim vietsub', 'phim thuyet minh', 'phevo', 'phim moi', 'phim online'],
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
   openGraph: {
-    title: 'VSMov Stream - Web Xem Phim HD/4K',
+    title: 'PHEVO Stream - Web Xem Phim HD/4K',
     description: 'Xem phim bộ, phim lẻ, anime mới nhất với giao diện rạp phim cực mượt.',
     type: 'website',
   },
