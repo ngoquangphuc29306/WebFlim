@@ -12,9 +12,16 @@ interface MovieRowProps {
   movies: MovieCardModel[];
   viewAllHref?: string;
   icon?: React.ReactNode;
+  deferRendering?: boolean;
 }
 
-export default function MovieRow({ title, movies, viewAllHref, icon }: MovieRowProps) {
+export default function MovieRow({
+  title,
+  movies,
+  viewAllHref,
+  icon,
+  deferRendering = false,
+}: MovieRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const { savedSlugSet, progressMap } = useMovieUserData();
 
@@ -32,7 +39,11 @@ export default function MovieRow({ title, movies, viewAllHref, icon }: MovieRowP
   if (!movies || movies.length === 0) return null;
 
   return (
-    <section className="relative my-8 sm:my-10 px-4 sm:px-6 lg:px-8 xl:px-12 max-w-[1920px] mx-auto">
+    <section
+      className={`relative my-8 sm:my-10 px-4 sm:px-6 lg:px-8 xl:px-12 max-w-[1920px] mx-auto ${
+        deferRendering ? '[content-visibility:auto] [contain-intrinsic-size:1px_420px]' : ''
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">

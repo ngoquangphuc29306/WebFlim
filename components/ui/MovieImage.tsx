@@ -21,11 +21,10 @@ export default function MovieImage({
   className = '',
   aspectRatio = 'poster',
   fill = true,
-  sizes = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw',
+  sizes = '(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px',
   ...props
 }: MovieImageProps) {
   const [error, setError] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   const cleanSrc = !src || typeof src !== 'string' || src.trim().length === 0 ? fallbackSrc : src.trim();
 
@@ -66,23 +65,17 @@ export default function MovieImage({
           : ''
       } ${className}`}
     >
-      {/* Loading placeholder skeleton shimmer */}
-      {!loaded && (
-        <div className="absolute inset-0 bg-[#181818] animate-pulse z-0" />
-      )}
       <Image
         src={cleanSrc}
         alt={alt || title || 'Hình ảnh phim'}
         fill={fill}
         sizes={sizes}
         referrerPolicy="no-referrer"
-        onLoad={() => setLoaded(true)}
         onError={handleImageError}
-        className={`object-cover transition-opacity duration-300 ${
-          loaded ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="object-cover"
         {...props}
       />
     </div>
   );
 }
+

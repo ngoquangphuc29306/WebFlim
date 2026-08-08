@@ -42,7 +42,7 @@ function MovieCardComponent({
           alt={movie.title}
           title={movie.title}
           priority={priority}
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px"
           className="group-hover/card:scale-[1.04] transition-transform duration-300 ease-out"
         />
 

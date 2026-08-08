@@ -38,6 +38,7 @@ export default async function HomePage() {
         movies={singleMovies}
         viewAllHref="/danh-sach/phim-le"
         icon={<Film className="w-5 h-5" />}
+        deferRendering
       />
 
       {/* Popular Series */}
@@ -46,6 +47,7 @@ export default async function HomePage() {
         movies={seriesMovies}
         viewAllHref="/danh-sach/phim-bo"
         icon={<Tv className="w-5 h-5" />}
+        deferRendering
       />
 
       {/* Subteam Vietsub */}
@@ -54,6 +56,7 @@ export default async function HomePage() {
         movies={subteamMovies}
         viewAllHref="/danh-sach/subteam"
         icon={<Sparkles className="w-5 h-5" />}
+        deferRendering
       />
 
       {/* Anime & Animation */}
@@ -62,6 +65,7 @@ export default async function HomePage() {
         movies={hoathinhMovies}
         viewAllHref="/the-loai/hoat-hinh"
         icon={<Clapperboard className="w-5 h-5" />}
+        deferRendering
       />
 
       {/* Quick Genre Explorer */}
