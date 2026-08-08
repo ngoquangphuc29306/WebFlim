@@ -265,6 +265,43 @@ export async function getMovieDetail(
   const url = `${BASE_URL}/phim/${slug}`;
   const { data, error } = await fetchJson<VSMovDetailResponse>(url, 60);
 
+  let needFallback = false;
+  if (!data || !data.movie) {
+    needFallback = true;
+  } else if (data.episodes && data.episodes[0]?.server_data?.length) {
+    // Check if primary server is missing early episodes (e.g., starts at episode 551 or 1156)
+    const firstEpName = data.episodes[0].server_data[0]?.name || '';
+    const match = firstEpName.match(/(\d+)/);
+    if (match && parseInt(match[1], 10) > 20) {
+      needFallback = true;
+    }
+  }
+
+  if (needFallback) {
+    const candidateSlugs = [slug];
+    if (slug === 'one-piece') candidateSlugs.push('dao-hai-tac');
+    if (slug === 'dao-hai-tac') candidateSlugs.push('one-piece');
+
+    for (const candidate of candidateSlugs) {
+      try {
+        const fallbackRes = await fetch(`https://phimapi.com/phim/${candidate}`, {
+          next: { revalidate: 300 },
+        });
+        if (fallbackRes.ok) {
+          const fallbackData = (await fallbackRes.json()) as VSMovDetailResponse;
+          if (fallbackData && fallbackData.movie && fallbackData.episodes?.length) {
+            const normalized = normalizeMovieDetail(fallbackData);
+            if (normalized) {
+              return { movie: normalized, error: null };
+            }
+          }
+        }
+      } catch {
+        // Ignore fallback fetch error and continue
+      }
+    }
+  }
+
   if (!data || !data.movie) {
     return { movie: null, error };
   }

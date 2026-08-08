@@ -4,7 +4,9 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useWatchHistory } from '@/lib/utils/history';
-import { History, Play, Trash2, Film, X } from 'lucide-react';
+import { History, Play, Trash2, X } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+
 
 export default function WatchHistoryPage() {
   const { history, removeHistoryItem, clearHistory, isMounted } = useWatchHistory();
@@ -42,15 +44,13 @@ export default function WatchHistoryPage() {
       </div>
 
       {history.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center px-4 bg-[#101010] border border-[#222] rounded-2xl my-8 max-w-2xl mx-auto">
-          <div className="w-16 h-16 rounded-full bg-[#1c1c1c] flex items-center justify-center text-[#737373] mb-4">
-            <Film className="w-8 h-8" />
-          </div>
-          <h3 className="text-lg font-bold text-white mb-2">Chưa có lịch sử xem</h3>
-          <p className="text-sm text-[#a3a3a3] max-w-md">
-            Những bộ phim bạn thưởng thức sẽ xuất hiện ở đây để bạn dễ dàng tiếp tục theo dõi!
-          </p>
-        </div>
+        <EmptyState
+          icon="film"
+          title="Chưa có lịch sử xem phim"
+          description="Những bộ phim bạn đã xem sẽ xuất hiện ở đây để bạn dễ dàng tiếp tục theo dõi bất cứ lúc nào."
+          actionLabel="Khám phá phim hay"
+          actionHref="/"
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {history.map((item) => {

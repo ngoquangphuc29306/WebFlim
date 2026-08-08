@@ -82,8 +82,8 @@ export function normalizeMovie(item: VSMovItem): MovieCardModel {
     slug: item.slug,
     title: item.name ? item.name.trim() : 'Chưa có tên',
     originalTitle: item.origin_name ? item.origin_name.trim() : undefined,
-    posterUrl: formatImageUrl(item.poster_url),
-    thumbUrl: formatImageUrl(item.thumb_url || item.poster_url),
+    posterUrl: formatImageUrl(item.thumb_url || item.poster_url),
+    thumbUrl: formatImageUrl(item.poster_url || item.thumb_url),
     year: item.year || undefined,
     type: item.type || undefined,
     status: item.status || undefined,
@@ -101,6 +101,55 @@ export function normalizeMovie(item: VSMovItem): MovieCardModel {
 }
 
 /**
+ * Helper to extract numeric episode index for natural sorting
+ */
+function extractEpisodeNumber(ep: { name: string; slug: string }): number {
+  if (!ep) return NaN;
+
+  const name = ep.name.trim();
+  const nameMatch = name.match(/(\d+(?:\.\d+)?)/);
+  if (nameMatch) {
+    const parsed = parseFloat(nameMatch[1]);
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  if (ep.slug) {
+    const slugMatch = ep.slug.match(/(\d+(?:\.\d+)?)/);
+    if (slugMatch) {
+      const parsed = parseFloat(slugMatch[1]);
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+
+  return NaN;
+}
+
+/**
+ * Sorts episode items in natural ascending order (Tập 1 -> Tập 1172)
+ */
+export function sortEpisodeItems<T extends { name: string; slug: string }>(items: T[]): T[] {
+  if (!Array.isArray(items) || items.length <= 1) return items;
+
+  return [...items].sort((a, b) => {
+    const numA = extractEpisodeNumber(a);
+    const numB = extractEpisodeNumber(b);
+
+    const hasNumA = !isNaN(numA);
+    const hasNumB = !isNaN(numB);
+
+    if (hasNumA && hasNumB) {
+      if (numA !== numB) return numA - numB;
+    } else if (hasNumA && !hasNumB) {
+      return -1;
+    } else if (!hasNumA && hasNumB) {
+      return 1;
+    }
+
+    return a.name.localeCompare(b.name, 'vi', { numeric: true, sensitivity: 'base' });
+  });
+}
+
+/**
  * Normalize server and episode data
  */
 export function normalizeEpisodeServers(servers?: VSMovServer[]): ServerGroupModel[] {
@@ -111,7 +160,7 @@ export function normalizeEpisodeServers(servers?: VSMovServer[]): ServerGroupMod
       ? srv.server_name.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim()
       : 'Server #1';
 
-    const items = Array.isArray(srv.server_data)
+    const rawItems = Array.isArray(srv.server_data)
       ? srv.server_data.map((ep) => ({
           name: ep.name ? ep.name.trim() : ep.filename || 'Tập 1',
           slug: ep.slug ? ep.slug.trim() : 'tap-1',
@@ -120,6 +169,8 @@ export function normalizeEpisodeServers(servers?: VSMovServer[]): ServerGroupMod
           m3u8Url: ep.link_m3u8 || undefined,
         }))
       : [];
+
+    const items = sortEpisodeItems(rawItems);
 
     return {
       serverName: cleanServerName,

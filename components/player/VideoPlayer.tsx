@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Hls from 'hls.js';
 import {
   RefreshCw,
   Maximize2,
+  Minimize2,
   ShieldAlert,
   Tv,
   Volume2,
@@ -15,8 +16,11 @@ import {
   Play,
   X,
   FastForward,
+  RotateCcw,
 } from 'lucide-react';
+import { toast } from '@/lib/utils/toast';
 import { saveWatchHistory } from '@/lib/utils/history';
+
 import {
   savePlaybackProgress,
   getPlaybackProgress,
@@ -90,7 +94,46 @@ function VideoPlayerInner({
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Picture-in-Picture active state tracking
+  const [isInPiP, setIsInPiP] = useState(false);
+
+  // Double-tap gesture seek feedback state
+  const [seekFeedback, setSeekFeedback] = useState<{ type: 'forward' | 'backward'; id: number } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number }>({ time: 0, x: 0 });
+  const seekTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!useDirectStream || !videoRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const now = Date.now();
+
+    if (now - lastTapRef.current.time < 350 && Math.abs(clickX - lastTapRef.current.x) < 80) {
+      const v = videoRef.current;
+      if (clickX < width * 0.4) {
+        if (Number.isFinite(v.duration)) {
+          v.currentTime = Math.max(0, v.currentTime - 10);
+          setSeekFeedback({ type: 'backward', id: now });
+          if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
+          seekTimerRef.current = setTimeout(() => setSeekFeedback(null), 800);
+        }
+      } else if (clickX > width * 0.6) {
+        if (Number.isFinite(v.duration)) {
+          v.currentTime = Math.min(v.duration, v.currentTime + 10);
+          setSeekFeedback({ type: 'forward', id: now });
+          if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
+          seekTimerRef.current = setTimeout(() => setSeekFeedback(null), 800);
+        }
+      }
+      lastTapRef.current = { time: 0, x: 0 };
+    } else {
+      lastTapRef.current = { time: now, x: clickX };
+    }
+  };
+
   const containerRef = useRef<HTMLDivElement | null>(null);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
@@ -161,6 +204,38 @@ function VideoPlayerInner({
     setAutoNextCountdown(null);
   };
 
+  const handleReplayCurrentEpisode = () => {
+    cancelAutoNext();
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  // Picture-in-Picture event listeners
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleEnterPiP = () => setIsInPiP(true);
+    const handleLeavePiP = () => setIsInPiP(false);
+
+    video.addEventListener('enterpictureinpicture', handleEnterPiP);
+    video.addEventListener('leavepictureinpicture', handleLeavePiP);
+
+    return () => {
+      video.removeEventListener('enterpictureinpicture', handleEnterPiP);
+      video.removeEventListener('leavepictureinpicture', handleLeavePiP);
+    };
+  }, [useDirectStream, playerMode]);
+
+  // Smooth scroll into view when Theater Mode is toggled on
+  useEffect(() => {
+    if (isTheaterMode && containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isTheaterMode]);
+
   // Cleanup auto-next timer on unmount
   useEffect(() => {
     return () => {
@@ -188,8 +263,10 @@ function VideoPlayerInner({
     setUseDirectStream(false);
     if (embedUrl) {
       setPlayerMode('embed');
+      toast.info('Đã tự động chuyển sang nguồn phát dự phòng.');
     } else {
       setPlayerMode('unavailable');
+      toast.error('Nguồn phát không khả dụng cho tập này.');
     }
     setLoading(true);
   }, [embedUrl]);
@@ -364,11 +441,11 @@ function VideoPlayerInner({
     saveCurrentVideoProgress(true);
   };
 
-  const triggerNextEpisodeNavigation = () => {
+  const triggerNextEpisodeNavigation = useCallback(() => {
     cancelAutoNext();
     if (!nextEpisodeSlug) return;
     router.push(`/xem-phim/${movieSlug}?ep=${nextEpisodeSlug}&server=${serverIndex}`);
-  };
+  }, [nextEpisodeSlug, movieSlug, serverIndex, router]);
 
   const handleEnded = () => {
     if (!capabilities.canDetectEnded) return;
@@ -512,6 +589,14 @@ function VideoPlayerInner({
           }
           break;
 
+        case 'n':
+        case 'N':
+          if (nextEpisodeSlug) {
+            e.preventDefault();
+            triggerNextEpisodeNavigation();
+          }
+          break;
+
         // Arrow keys REQUIRE player container focus or fullscreen
         case 'ArrowRight':
           if (isFullscreen || isPlayerFocused) {
@@ -562,7 +647,7 @@ function VideoPlayerInner({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [useDirectStream, embedUrl, isTheaterMode, pipSupported]);
+  }, [useDirectStream, embedUrl, isTheaterMode, pipSupported, nextEpisodeSlug, triggerNextEpisodeNavigation]);
 
   // Preferences controls
   const handleVolumeChange = (newVol: number) => {
@@ -640,9 +725,36 @@ function VideoPlayerInner({
       <div
         ref={containerRef}
         tabIndex={0}
+        onClick={handleContainerClick}
         aria-label="Trình phát video VSMov"
         className="relative w-full aspect-video bg-[#050505] rounded-2xl overflow-hidden border border-[#222] shadow-2xl group focus:outline-none focus:ring-1 focus:ring-[#e50914]"
       >
+        {/* Double-tap Seek Feedback Overlay */}
+        {seekFeedback && (
+          <div
+            key={seekFeedback.id}
+            className={`absolute inset-y-0 z-20 flex items-center justify-center pointer-events-none animate-pulse ${
+              seekFeedback.type === 'backward'
+                ? 'left-0 w-1/3 bg-gradient-to-r from-black/60 to-transparent rounded-r-full'
+                : 'right-0 w-1/3 bg-gradient-to-l from-black/60 to-transparent rounded-l-full'
+            }`}
+          >
+            <div className="flex flex-col items-center text-white bg-black/80 px-4 py-2.5 rounded-2xl border border-white/20 backdrop-blur-md shadow-2xl">
+              {seekFeedback.type === 'backward' ? (
+                <>
+                  <RotateCcw className="w-6 h-6 text-[#e50914] animate-spin" />
+                  <span className="text-xs font-extrabold mt-1 tracking-wider">-10 giây</span>
+                </>
+              ) : (
+                <>
+                  <FastForward className="w-6 h-6 text-[#e50914]" />
+                  <span className="text-xs font-extrabold mt-1 tracking-wider">+10 giây</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Loading Spinner */}
         {loading && (
           <div className="absolute inset-0 bg-[#080808] flex flex-col items-center justify-center gap-3 z-10">
@@ -655,34 +767,78 @@ function VideoPlayerInner({
 
         {/* Auto-Next Episode Overlay */}
         {autoNextCountdown !== null && capabilities.canDetectEnded && (
-          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-            <div className="bg-[#121212] border border-[#282828] p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-30 flex flex-col items-center justify-center p-4 sm:p-6 text-center animate-fade-in">
+            <div className="bg-[#121212] border border-[#2a2a2a] p-5 sm:p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl relative overflow-hidden">
+              {/* Background ambient glow */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#e50914]/15 rounded-full blur-2xl pointer-events-none" />
+
+              {/* Top Badge */}
               <div className="flex items-center justify-center gap-2 text-[#e50914]">
-                <FastForward className="w-6 h-6 animate-pulse" />
-                <span className="font-bold text-sm tracking-wide uppercase">Tập tiếp theo</span>
+                <FastForward className="w-5 h-5 animate-pulse" />
+                <span className="font-bold text-xs tracking-wider uppercase">Tự động chuyển tập</span>
               </div>
 
-              <div>
-                <p className="text-white font-bold text-lg">Tập {nextEpisodeName || 'mới'}</p>
-                <p className="text-xs text-[#a3a3a3] mt-1">Sẽ tự động phát sau {autoNextCountdown} giây</p>
+              {/* Episode Info & Circular Timer Ring */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative w-20 h-20 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className="text-[#222]"
+                      strokeWidth="3"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path
+                      className="text-[#e50914] transition-all duration-1000 ease-linear"
+                      strokeDasharray="100, 100"
+                      strokeDashoffset={((5 - autoNextCountdown) / 5) * 100}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+                  <span className="absolute text-2xl font-black text-white">{autoNextCountdown}s</span>
+                </div>
+
+                <div>
+                  <h3 className="text-white font-bold text-base sm:text-lg line-clamp-1">
+                    {movieTitle}
+                  </h3>
+                  <p className="text-xs text-[#e50914] font-semibold mt-0.5">
+                    Chuẩn bị phát: Tập {nextEpisodeName || 'kế tiếp'}
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
+              {/* Action Buttons */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
                 <button
                   onClick={triggerNextEpisodeNavigation}
-                  className="flex-1 py-2 px-4 rounded-xl bg-[#e50914] hover:bg-[#f40612] text-white text-xs font-bold transition-all shadow-lg shadow-[#e50914]/20 flex items-center justify-center gap-1.5"
+                  className="col-span-2 py-2.5 px-3 rounded-xl bg-[#e50914] hover:bg-[#f40612] text-white text-xs font-bold transition-all shadow-lg shadow-[#e50914]/25 flex items-center justify-center gap-1.5 active:scale-95"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>Phát ngay</span>
                 </button>
                 <button
                   onClick={cancelAutoNext}
-                  className="flex-1 py-2 px-4 rounded-xl bg-[#222] hover:bg-[#2c2c2c] text-[#a3a3a3] hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 border border-[#333]"
+                  className="py-2.5 px-3 rounded-xl bg-[#222] hover:bg-[#2c2c2c] text-[#a3a3a3] hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-1 border border-[#333] active:scale-95"
+                  title="Dừng tự động phát"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>Hủy</span>
                 </button>
               </div>
+
+              <button
+                onClick={handleReplayCurrentEpisode}
+                className="w-full py-2 text-center text-xs text-[#a3a3a3] hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Xem lại tập vừa chiếu</span>
+              </button>
             </div>
           </div>
         )}
@@ -797,14 +953,30 @@ function VideoPlayerInner({
               {pipSupported && (
                 <button
                   onClick={handleTogglePiP}
-                  className="hidden sm:flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-2.5 py-1.5 rounded-lg border border-[#262626] transition-colors"
-                  title="Xem ở cửa sổ nổi (Picture-in-Picture)"
+                  className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors ${
+                    isInPiP
+                      ? 'bg-[#e50914] border-[#e50914] text-white font-bold'
+                      : 'bg-[#141414] hover:bg-[#1a1a1a] text-white border-[#262626]'
+                  }`}
+                  title={isInPiP ? 'Đang bật cửa sổ nổi (Click để thoát)' : 'Xem ở cửa sổ nổi (Picture-in-Picture)'}
                 >
-                  <PictureInPicture2 className="w-3.5 h-3.5 text-[#e50914]" />
-                  <span>Hình trong hình</span>
+                  <PictureInPicture2 className={`w-3.5 h-3.5 ${isInPiP ? 'text-white' : 'text-[#e50914]'}`} />
+                  <span>{isInPiP ? 'Đang phát PiP' : 'Cửa sổ nổi'}</span>
                 </button>
               )}
             </>
+          )}
+
+          {/* Quick Next Episode Button (Available on all players if next episode exists) */}
+          {nextEpisodeSlug && (
+            <button
+              onClick={triggerNextEpisodeNavigation}
+              className="flex items-center gap-1.5 bg-[#e50914]/15 hover:bg-[#e50914]/25 text-[#e50914] hover:text-white px-2.5 py-1.5 rounded-lg border border-[#e50914]/40 font-bold transition-all active:scale-95"
+              title={`Chuyển sang Tập ${nextEpisodeName || 'tiếp theo'} (Phím tắt N)`}
+            >
+              <FastForward className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Tập {nextEpisodeName || 'kế'}</span>
+            </button>
           )}
 
           {/* Auto-Next Episode Toggle - ONLY show if direct player can detect ended */}
@@ -816,9 +988,9 @@ function VideoPlayerInner({
                   ? 'bg-[#181818] border-[#e50914] text-white font-semibold'
                   : 'bg-[#141414] border-[#262626] text-[#737373] hover:text-white'
               }`}
-              title="Tự động phát tập tiếp theo khi hết phim"
+              title="Tự động chuyển sang tập tiếp theo khi phát xong"
             >
-              <FastForward className={`w-3.5 h-3.5 ${prefs.autoplayNextEpisode ? 'text-[#e50914]' : ''}`} />
+              <span className={`w-2 h-2 rounded-full ${prefs.autoplayNextEpisode ? 'bg-[#e50914] animate-pulse' : 'bg-[#555]'}`} />
               <span className="hidden xs:inline">Tự chuyển tập</span>
             </button>
           )}
@@ -837,10 +1009,24 @@ function VideoPlayerInner({
           {/* Theater Mode */}
           <button
             onClick={() => setIsTheaterMode(!isTheaterMode)}
-            className="hidden sm:flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-3 py-1.5 rounded-lg border border-[#262626] transition-colors"
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${
+              isTheaterMode
+                ? 'bg-[#e50914] border-[#e50914] text-white font-bold'
+                : 'bg-[#141414] hover:bg-[#1a1a1a] text-white border-[#262626]'
+            }`}
+            title={isTheaterMode ? 'Thoát chế độ rạp phim (Esc)' : 'Bật chế độ rạp phim mở rộng'}
           >
-            <Maximize2 className="w-3.5 h-3.5 text-[#e50914]" />
-            <span>{isTheaterMode ? 'Thu nhỏ' : 'Rạp phim'}</span>
+            {isTheaterMode ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 text-white" />
+                <span>Thu nhỏ</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5 text-[#e50914]" />
+                <span>Rạp phim</span>
+              </>
+            )}
           </button>
         </div>
       </div>

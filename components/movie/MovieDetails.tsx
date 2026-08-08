@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Play,
@@ -17,9 +17,12 @@ import {
   ChevronUp,
   Server,
   Layers,
+  Check,
 } from 'lucide-react';
 import { MovieDetailModel } from '@/types/movie';
 import { useWatchlist, toggleWatchlist } from '@/lib/utils/favorites';
+import { usePlaybackProgress, resolveResumeTarget } from '@/lib/persistence/progress';
+import { toast } from '@/lib/utils/toast';
 import MovieImage from '@/components/ui/MovieImage';
 
 interface MovieDetailsProps {
@@ -29,11 +32,39 @@ interface MovieDetailsProps {
 export default function MovieDetails({ movie }: MovieDetailsProps) {
   const { isSaved, isMounted } = useWatchlist();
   const saved = isMounted && isSaved(movie.slug);
+  const { progressList } = usePlaybackProgress();
   const [copied, setCopied] = useState(false);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
   const [activeServerIdx, setActiveServerIdx] = useState(0);
   const [activeChunkIdx, setActiveChunkIdx] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
+
+  // Compute Smart Resume target
+  const smartCTA = useMemo(() => {
+    return resolveResumeTarget({
+      movieSlug: movie.slug,
+      movieType: movie.type,
+      episodes: movie.episodes || [],
+      progressRecords: progressList,
+    });
+  }, [movie.slug, movie.type, movie.episodes, progressList]);
+
+  // Compute Episode Watch States map
+  const episodeProgressMap = useMemo(() => {
+    const map = new Map<string, { percent: number; completed: boolean }>();
+    progressList
+      .filter((p) => p.movieSlug === movie.slug)
+      .forEach((p) => {
+        if (p.episodeSlug) {
+          const percent = p.duration > 0 ? Math.min(100, Math.round((p.currentTime / p.duration) * 100)) : 0;
+          map.set(p.episodeSlug, {
+            percent,
+            completed: p.completed,
+          });
+        }
+      });
+    return map;
+  }, [progressList, movie.slug]);
 
   // Monitor scroll for mobile sticky CTA
   useEffect(() => {
@@ -52,6 +83,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
+      toast.success('Đã sao chép liên kết chia sẻ!');
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -67,7 +99,6 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
   const totalEpisodes = movie.episodes.reduce((acc, srv) => acc + srv.items.length, 0);
   const activeServer = movie.episodes[activeServerIdx] || movie.episodes[0];
   const activeEpisodes = activeServer?.items || [];
-  const firstEpisode = activeEpisodes[0];
 
   // Episode Range Chunks (for 50+ episodes)
   const CHUNK_SIZE = 50;
@@ -128,11 +159,16 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
             {/* Action Buttons under Poster */}
             <div className="mt-4 flex flex-col gap-2.5">
               <Link
-                href={`/xem-phim/${movie.slug}${firstEpisode ? `?ep=${firstEpisode.slug}&server=${activeServerIdx}` : ''}`}
-                className="w-full flex items-center justify-center gap-2 bg-[#e50914] hover:bg-[#f40612] text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-[#e50914]/25 transition-all hover:scale-[1.02] active:scale-98 text-center"
+                href={`/xem-phim/${movie.slug}?ep=${smartCTA.episodeSlug}&server=${smartCTA.serverIndex}`}
+                className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#e50914] hover:bg-[#f40612] text-white font-bold py-3 px-5 rounded-xl shadow-lg shadow-[#e50914]/25 transition-all hover:scale-[1.02] active:scale-98 text-center"
               >
-                <Play className="w-5 h-5 fill-current ml-0.5" />
-                <span>Xem Phim Ngay</span>
+                <div className="flex items-center gap-2">
+                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                  <span className="text-sm">{smartCTA.label}</span>
+                </div>
+                {smartCTA.subLabel && (
+                  <span className="text-[11px] font-medium text-white/80">{smartCTA.subLabel}</span>
+                )}
               </Link>
 
               <div className="flex gap-2">
@@ -363,17 +399,40 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
                   </div>
                 )}
 
-                {/* Episode Grid */}
+                {/* Episode Grid with Watch State */}
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-                  {currentChunkEpisodes.map((ep) => (
-                    <Link
-                      key={ep.slug}
-                      href={`/xem-phim/${movie.slug}?ep=${ep.slug}&server=${activeServerIdx}`}
-                      className="py-2 px-1 text-center bg-[#181818] border border-[#262626] hover:border-[#e50914] hover:bg-[#e50914] text-xs font-medium text-white rounded-lg transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
-                    >
-                      Tập {ep.name}
-                    </Link>
-                  ))}
+                  {currentChunkEpisodes.map((ep) => {
+                    const status = episodeProgressMap.get(ep.slug);
+                    const isCompleted = status?.completed;
+                    const inProgress = status && !status.completed && status.percent > 0;
+
+                    return (
+                      <Link
+                        key={ep.slug}
+                        href={`/xem-phim/${movie.slug}?ep=${ep.slug}&server=${activeServerIdx}`}
+                        aria-label={`Tập ${ep.name}${isCompleted ? ', đã xem' : inProgress ? `, đã xem ${status.percent}%` : ''}`}
+                        className={`relative py-2 px-1 text-center border rounded-lg text-xs font-medium transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] overflow-hidden flex items-center justify-center gap-1 ${
+                          isCompleted
+                            ? 'bg-[#181818] border-emerald-900/60 text-emerald-300 hover:border-emerald-500'
+                            : 'bg-[#181818] border-[#262626] hover:border-[#e50914] hover:bg-[#e50914] text-white'
+                        }`}
+                      >
+                        {isCompleted && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                        <span>Tập {ep.name}</span>
+                        {inProgress && (
+                          <div
+                            className="absolute bottom-0 left-0 right-0 h-1 bg-black/40 overflow-hidden"
+                            role="progressbar"
+                            aria-valuenow={status.percent}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          >
+                            <div className="h-full bg-[#e50914] transition-[width] duration-300" style={{ width: `${status.percent}%` }} />
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -388,11 +447,11 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
           className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0c0c]/95 backdrop-blur-md border-t border-[#262626] p-3 md:hidden flex items-center gap-3 animate-in slide-in-from-bottom-4 duration-300 shadow-2xl"
         >
           <Link
-            href={`/xem-phim/${movie.slug}${firstEpisode ? `?ep=${firstEpisode.slug}&server=${activeServerIdx}` : ''}`}
+            href={`/xem-phim/${movie.slug}?ep=${smartCTA.episodeSlug}&server=${smartCTA.serverIndex}`}
             className="flex-1 flex items-center justify-center gap-2 bg-[#e50914] hover:bg-[#f40612] text-white font-bold py-3 px-4 rounded-xl text-sm shadow-lg shadow-[#e50914]/30"
           >
             <Play className="w-4 h-4 fill-current ml-0.5" />
-            <span>Xem Phim Ngay</span>
+            <span>{smartCTA.label}</span>
           </Link>
 
           <button
@@ -412,3 +471,4 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
     </div>
   );
 }
+

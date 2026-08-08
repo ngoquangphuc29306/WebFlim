@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import BottomNav from '@/components/layout/BottomNav';
+import ToastContainer from '@/components/ui/Toast';
 import { getGenresList, getCountriesList, getYearsList } from '@/lib/api/vsmov';
 
 export const metadata: Metadata = {
@@ -27,9 +29,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="vi" className="dark scroll-smooth">
       <body className="bg-[#080808] text-[#f5f5f5] min-h-screen flex flex-col font-sans antialiased selection:bg-[#e50914] selection:text-white" suppressHydrationWarning>
         <Header genres={genres} countries={countries} years={years} />
-        <main className="flex-1 pt-16 sm:pt-20">{children}</main>
+        <main className="flex-1 pt-16 sm:pt-20 pb-14 md:pb-0">{children}</main>
         <Footer />
+        <BottomNav />
+        <ToastContainer />
       </body>
     </html>
   );
 }
+

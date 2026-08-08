@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { Star, Play, Bookmark } from 'lucide-react';
 import { MovieCardModel } from '@/types/movie';
 import { useWatchlist, toggleWatchlist } from '@/lib/utils/favorites';
+import { usePlaybackProgress } from '@/lib/persistence/progress';
 import MovieImage from '@/components/ui/MovieImage';
 import MovieBadge from '@/components/ui/MovieBadge';
 
@@ -16,6 +17,21 @@ interface MovieCardProps {
 export default function MovieCard({ movie, priority = false }: MovieCardProps) {
   const { isSaved, isMounted } = useWatchlist();
   const saved = isMounted && isSaved(movie.slug);
+  const { progressList } = usePlaybackProgress();
+
+  // Find latest unfinished progress record for this movie
+  const progressRecord = useMemo(() => {
+    const matching = progressList.filter(
+      (p) => p.movieSlug === movie.slug && !p.completed && p.currentTime >= 10 && p.duration > 0
+    );
+    if (matching.length === 0) return null;
+    matching.sort((a, b) => b.updatedAt - a.updatedAt);
+    return matching[0];
+  }, [progressList, movie.slug]);
+
+  const progressPercent = progressRecord
+    ? Math.min(100, Math.max(0, Math.round((progressRecord.currentTime / progressRecord.duration) * 100)))
+    : 0;
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -99,6 +115,23 @@ export default function MovieCard({ movie, priority = false }: MovieCardProps) {
             ) : null}
           </div>
         )}
+
+        {/* Unfinished Progress Line at bottom of Poster */}
+        {progressPercent > 0 && (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-1 bg-[#1a1a1a] overflow-hidden z-20 pointer-events-none"
+            role="progressbar"
+            aria-valuenow={progressPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Tiến độ xem ${progressPercent}%`}
+          >
+            <div
+              className="h-full bg-[#e50914] transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
       </Link>
 
       {/* Card Info */}
@@ -121,3 +154,4 @@ export default function MovieCard({ movie, priority = false }: MovieCardProps) {
     </div>
   );
 }
+

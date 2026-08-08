@@ -2,6 +2,7 @@
 
 import { MovieCardModel } from '@/types/movie';
 import { watchlistRepository, useWatchlist } from '@/lib/persistence/watchlist';
+import { toast } from '@/lib/utils/toast';
 
 export { useWatchlist };
 
@@ -14,5 +15,12 @@ export function isInWatchlist(slug: string): boolean {
 }
 
 export function toggleWatchlist(movie: MovieCardModel): boolean {
-  return watchlistRepository.toggle(movie);
+  const isNowSaved = watchlistRepository.toggle(movie);
+  if (isNowSaved) {
+    toast.success('Đã thêm vào Yêu thích.');
+  } else {
+    toast.info('Đã xóa khỏi Yêu thích.');
+  }
+  return isNowSaved;
 }
+
