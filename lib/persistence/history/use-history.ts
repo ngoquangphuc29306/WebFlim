@@ -3,6 +3,7 @@
 import { useSyncExternalStore, useCallback } from 'react';
 import { watchHistoryRepository } from './history.service';
 import { WatchHistoryItem } from './history.types';
+import { syncEngine } from '@/lib/sync/sync-engine';
 
 const EMPTY_HISTORY: WatchHistoryItem[] = [];
 
@@ -27,10 +28,12 @@ export function useWatchHistory() {
 
   const removeHistoryItem = useCallback((slug: string) => {
     watchHistoryRepository.remove(slug);
+    syncEngine.onHistoryRemove(slug);
   }, []);
 
   const clearHistory = useCallback(() => {
     watchHistoryRepository.clear();
+    syncEngine.onHistoryClear();
   }, []);
 
   return {

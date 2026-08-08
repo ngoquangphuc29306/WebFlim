@@ -3,6 +3,7 @@
 import { useSyncExternalStore, useCallback } from 'react';
 import { playerPreferencesRepository } from './preferences.service';
 import { PlayerPreferences, DEFAULT_PREFERENCES } from './preferences.types';
+import { syncEngine } from '@/lib/sync/sync-engine';
 
 function subscribePreferences(callback: () => void) {
   if (playerPreferencesRepository.subscribe) {
@@ -27,11 +28,15 @@ export function usePlayerPreferences() {
   );
 
   const updatePreferences = useCallback((partial: Partial<PlayerPreferences>) => {
-    return playerPreferencesRepository.save(partial);
+    const saved = playerPreferencesRepository.save(partial);
+    syncEngine.onPreferencesSave(saved);
+    return saved;
   }, []);
 
   const resetPreferences = useCallback(() => {
-    return playerPreferencesRepository.reset();
+    const reset = playerPreferencesRepository.reset();
+    syncEngine.onPreferencesSave(reset);
+    return reset;
   }, []);
 
   return {

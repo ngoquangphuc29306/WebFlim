@@ -37,6 +37,29 @@ import {
   PlayerPreferences,
 } from '@/lib/utils/player-preferences';
 
+function setVideoSource(el: HTMLVideoElement, url: string) {
+  el.src = url;
+}
+
+function setVideoProperties(el: HTMLVideoElement, volume: number, muted: boolean, rate: number) {
+  el.volume = volume;
+  el.muted = muted;
+  el.playbackRate = rate;
+}
+
+function setVideoVolume(el: HTMLVideoElement, volume: number, muted: boolean) {
+  el.volume = volume;
+  el.muted = muted;
+}
+
+function setVideoPlaybackRate(el: HTMLVideoElement, rate: number) {
+  el.playbackRate = rate;
+}
+
+function setVideoCurrentTime(el: HTMLVideoElement, time: number) {
+  el.currentTime = time;
+}
+
 interface VideoPlayerProps {
   embedUrl: string;
   m3u8Url?: string;
@@ -318,7 +341,7 @@ function VideoPlayerInner({
 
     if (canNative) {
       queueMicrotask(() => setPlayerMode('native-hls'));
-      video.src = m3u8Url;
+      setVideoSource(video, m3u8Url);
     } else if (Hls.isSupported()) {
       queueMicrotask(() => setPlayerMode('hls-js'));
       const hls = new Hls({
@@ -382,17 +405,20 @@ function VideoPlayerInner({
     const now = Date.now();
     if (force || now - lastSaveTimeRef.current >= 5000) {
       lastSaveTimeRef.current = now;
-      savePlaybackProgress({
-        movieSlug: p.movieSlug,
-        movieTitle: p.movieTitle,
-        posterUrl: p.posterUrl,
-        episodeSlug: p.episodeSlug,
-        episodeName: p.episodeName,
-        serverIndex: p.serverIndex,
-        serverName: p.serverName,
-        currentTime: isEnded ? v.duration : v.currentTime,
-        duration: v.duration,
-      });
+      savePlaybackProgress(
+        {
+          movieSlug: p.movieSlug,
+          movieTitle: p.movieTitle,
+          posterUrl: p.posterUrl,
+          episodeSlug: p.episodeSlug,
+          episodeName: p.episodeName,
+          serverIndex: p.serverIndex,
+          serverName: p.serverName,
+          currentTime: isEnded ? v.duration : v.currentTime,
+          duration: v.duration,
+        },
+        force
+      );
     }
   };
 
@@ -404,9 +430,7 @@ function VideoPlayerInner({
     if (!v || !p.movieSlug || !p.episodeSlug) return;
 
     // Apply restored preferences
-    v.volume = prefs.volume;
-    v.muted = prefs.muted;
-    v.playbackRate = prefs.playbackRate;
+    setVideoProperties(v, prefs.volume, prefs.muted, prefs.playbackRate);
 
     if (hasResumedRef.current) return;
 
@@ -424,7 +448,7 @@ function VideoPlayerInner({
       saved.currentTime / v.duration < COMPLETION_THRESHOLD
     ) {
       try {
-        v.currentTime = saved.currentTime;
+        setVideoCurrentTime(v, saved.currentTime);
       } catch (err) {
         console.warn('Failed to set resume currentTime:', err);
       }
@@ -496,17 +520,22 @@ function VideoPlayerInner({
     }
   };
 
-  // Page visibility listener to save progress when app is backgrounded/tab switched
+  // Page visibility & pagehide listener to save progress when app is backgrounded/tab switched
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         saveCurrentVideoProgress(true);
       }
     };
+    const handlePageHide = () => {
+      saveCurrentVideoProgress(true);
+    };
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
     return () => {
       saveCurrentVideoProgress(true);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, []);
 
@@ -652,8 +681,7 @@ function VideoPlayerInner({
   // Preferences controls
   const handleVolumeChange = (newVol: number) => {
     if (videoRef.current) {
-      videoRef.current.volume = newVol;
-      videoRef.current.muted = newVol === 0;
+      setVideoVolume(videoRef.current, newVol, newVol === 0);
     }
     const updated = savePlayerPreferences({ volume: newVol, muted: newVol === 0 });
     setPrefs(updated);
@@ -662,7 +690,7 @@ function VideoPlayerInner({
   const handleMuteToggle = () => {
     const newMuted = !prefs.muted;
     if (videoRef.current) {
-      videoRef.current.muted = newMuted;
+      setVideoVolume(videoRef.current, videoRef.current.volume, newMuted);
     }
     const updated = savePlayerPreferences({ muted: newMuted });
     setPrefs(updated);
@@ -670,7 +698,7 @@ function VideoPlayerInner({
 
   const handleSpeedSelect = (rate: number) => {
     if (videoRef.current) {
-      videoRef.current.playbackRate = rate;
+      setVideoPlaybackRate(videoRef.current, rate);
     }
     const updated = savePlayerPreferences({ playbackRate: rate });
     setPrefs(updated);

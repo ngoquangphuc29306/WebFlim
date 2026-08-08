@@ -1,15 +1,16 @@
 import { WatchlistRepository } from './watchlist.repository';
 import { WatchlistItem } from './watchlist.types';
 import {
-  safeReadJson,
+  STORAGE_KEYS,
+  STORAGE_EVENTS,
   safeWriteJson,
   safeRemoveItem,
   subscribeStorageEvent,
   isBrowser,
 } from '../storage';
 
-const STORAGE_KEY = 'vsmov_watchlist_v1';
-const EVENT_NAME = 'vsmov_watchlist_updated';
+const STORAGE_KEY = STORAGE_KEYS.watchlist;
+const EVENT_NAME = STORAGE_EVENTS.watchlist;
 const EMPTY_LIST: WatchlistItem[] = [];
 
 export class LocalWatchlistRepository implements WatchlistRepository {

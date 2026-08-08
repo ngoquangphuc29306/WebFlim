@@ -4,6 +4,23 @@
  * Utility functions for safe localStorage operations and browser/same-tab event handling.
  */
 
+export const STORAGE_KEYS = {
+  watchlist: 'vsmov_watchlist_v1',
+  history: 'vsmov_watch_history_v1',
+  progress: 'vsmov_playback_progress_v1',
+  preferences: 'vsmov_player_preferences_v1',
+  recentSearches: 'vsmov_recent_searches_v1',
+  syncMeta: 'vsmov_sync_meta_v1',
+  syncQueue: 'vsmov_sync_queue_v1',
+} as const;
+
+export const STORAGE_EVENTS = {
+  watchlist: 'vsmov_watchlist_updated',
+  history: 'vsmov_history_updated',
+  progress: 'vsmov_progress_updated',
+  preferences: 'vsmov_preferences_updated',
+} as const;
+
 export function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }

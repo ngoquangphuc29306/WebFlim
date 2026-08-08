@@ -24,6 +24,8 @@ import {
   removeRecentSearch,
   clearRecentSearches,
 } from '@/lib/utils/search-history';
+import UserAccountMenu from '@/components/layout/UserAccountMenu';
+
 
 
 interface HeaderProps {
@@ -68,13 +70,13 @@ export default function Header({ genres = [], countries = [], years = [] }: Head
   // Load recent searches on focus
   useEffect(() => {
     if (searchFocused) {
-      setRecentSearches(getRecentSearches());
+      queueMicrotask(() => setRecentSearches(getRecentSearches()));
     }
   }, [searchFocused]);
 
   // Reset highlight index when query or suggestions change
   useEffect(() => {
-    setHighlightedIndex(-1);
+    queueMicrotask(() => setHighlightedIndex(-1));
   }, [suggestions, searchQuery]);
 
   const handleSearchSubmit = (e?: React.FormEvent, customQuery?: string) => {
@@ -687,6 +689,10 @@ export default function Header({ genres = [], countries = [], years = [] }: Head
             >
               <History className="w-5 h-5" />
             </Link>
+
+            {/* User Account Menu */}
+            <UserAccountMenu />
+
 
             {/* Mobile Menu Toggle Button */}
             <button

@@ -1,14 +1,16 @@
 import { PlaybackProgressRepository } from './progress.repository';
 import { PlaybackProgress, COMPLETION_THRESHOLD } from './progress.types';
 import {
+  STORAGE_KEYS,
+  STORAGE_EVENTS,
   safeWriteJson,
   safeRemoveItem,
   subscribeStorageEvent,
   isBrowser,
 } from '../storage';
 
-const STORAGE_KEY = 'vsmov_playback_progress_v1';
-const EVENT_NAME = 'vsmov_progress_updated';
+const STORAGE_KEY = STORAGE_KEYS.progress;
+const EVENT_NAME = STORAGE_EVENTS.progress;
 const MAX_PROGRESS_ITEMS = 50;
 const EMPTY_PROGRESS_LIST: PlaybackProgress[] = [];
 

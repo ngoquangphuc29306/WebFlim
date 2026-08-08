@@ -1,0 +1,82 @@
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import {
+  DbWatchHistoryRow,
+  mapDbToWatchHistoryItem,
+  mapWatchHistoryItemToDb,
+} from '@/lib/supabase/types';
+import { WatchHistoryItem } from '@/types/movie';
+import { CloudSyncError } from './cloud-error';
+
+export const historyGateway = {
+  async list(userId: string): Promise<WatchHistoryItem[]> {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      throw new CloudSyncError('Supabase client unavailable', undefined, 'history', 'list');
+    }
+
+    const { data, error } = await supabase
+      .from('watch_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.warn('[HistoryGateway] Failed to list items:', error.message);
+      throw new CloudSyncError(error.message, error.code, 'history', 'list');
+    }
+
+    return (data as DbWatchHistoryRow[] || []).map(mapDbToWatchHistoryItem);
+  },
+
+  async upsert(userId: string, item: WatchHistoryItem): Promise<void> {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      throw new CloudSyncError('Supabase client unavailable', undefined, 'history', 'upsert');
+    }
+
+    const payload = mapWatchHistoryItemToDb(userId, item);
+    const { error } = await supabase
+      .from('watch_history')
+      .upsert(payload, { onConflict: 'user_id,movie_slug' });
+
+    if (error) {
+      console.warn('[HistoryGateway] Upsert failed:', error.message);
+      throw new CloudSyncError(error.message, error.code, 'history', 'upsert');
+    }
+  },
+
+  async remove(userId: string, movieSlug: string): Promise<void> {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      throw new CloudSyncError('Supabase client unavailable', undefined, 'history', 'remove');
+    }
+
+    const { error } = await supabase
+      .from('watch_history')
+      .delete()
+      .eq('user_id', userId)
+      .eq('movie_slug', movieSlug);
+
+    if (error) {
+      console.warn('[HistoryGateway] Remove failed:', error.message);
+      throw new CloudSyncError(error.message, error.code, 'history', 'remove');
+    }
+  },
+
+  async clear(userId: string): Promise<void> {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      throw new CloudSyncError('Supabase client unavailable', undefined, 'history', 'clear');
+    }
+
+    const { error } = await supabase
+      .from('watch_history')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.warn('[HistoryGateway] Clear failed:', error.message);
+      throw new CloudSyncError(error.message, error.code, 'history', 'clear');
+    }
+  },
+};

@@ -1,14 +1,16 @@
 import { WatchHistoryRepository } from './history.repository';
 import { WatchHistoryItem } from './history.types';
 import {
+  STORAGE_KEYS,
+  STORAGE_EVENTS,
   safeWriteJson,
   safeRemoveItem,
   subscribeStorageEvent,
   isBrowser,
 } from '../storage';
 
-const STORAGE_KEY = 'vsmov_watch_history_v1';
-const EVENT_NAME = 'vsmov_history_updated';
+const STORAGE_KEY = STORAGE_KEYS.history;
+const EVENT_NAME = STORAGE_EVENTS.history;
 const MAX_HISTORY_ITEMS = 30;
 const EMPTY_HISTORY: WatchHistoryItem[] = [];
 

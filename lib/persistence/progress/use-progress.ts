@@ -3,6 +3,7 @@
 import { useSyncExternalStore, useCallback } from 'react';
 import { playbackProgressRepository } from './progress.service';
 import { PlaybackProgress, MIN_RESUME_SECONDS } from './progress.types';
+import { syncEngine } from '@/lib/sync/sync-engine';
 
 const EMPTY_PROGRESS_LIST: PlaybackProgress[] = [];
 
@@ -31,10 +32,12 @@ export function usePlaybackProgress() {
 
   const removeProgress = useCallback((movieSlug: string, episodeSlug?: string) => {
     playbackProgressRepository.remove(movieSlug, episodeSlug);
+    syncEngine.onProgressRemove(movieSlug, episodeSlug);
   }, []);
 
   const clearProgress = useCallback(() => {
     playbackProgressRepository.clear();
+    syncEngine.onProgressClear();
   }, []);
 
   return {

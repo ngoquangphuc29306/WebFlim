@@ -4,10 +4,10 @@ import {
   DEFAULT_PREFERENCES,
   ALLOWED_PLAYBACK_RATES,
 } from './preferences.types';
-import { safeWriteJson, isBrowser, subscribeStorageEvent } from '../storage';
+import { STORAGE_KEYS, STORAGE_EVENTS, safeWriteJson, isBrowser, subscribeStorageEvent } from '../storage';
 
-const PREFERENCES_KEY = 'vsmov_player_preferences_v1';
-const EVENT_NAME = 'vsmov_preferences_updated';
+const PREFERENCES_KEY = STORAGE_KEYS.preferences;
+const EVENT_NAME = STORAGE_EVENTS.preferences;
 
 export class LocalPlayerPreferencesRepository implements PlayerPreferencesRepository {
   private cachedRaw: string | null = null;
@@ -52,6 +52,7 @@ export class LocalPlayerPreferencesRepository implements PlayerPreferencesReposi
         muted,
         playbackRate,
         autoplayNextEpisode,
+        updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : undefined,
       };
 
       this.cachedParsed = validated;
@@ -71,6 +72,7 @@ export class LocalPlayerPreferencesRepository implements PlayerPreferencesReposi
       const updated: PlayerPreferences = {
         ...current,
         ...partial,
+        updatedAt: Date.now(),
       };
 
       if (typeof updated.volume === 'number') {
