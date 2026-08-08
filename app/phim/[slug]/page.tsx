@@ -6,7 +6,7 @@ import { MovieCardModel } from '@/types/movie';
 import MovieDetails from '@/components/movie/MovieDetails';
 import MovieRow from '@/components/movie/MovieRow';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ slug: string }>;

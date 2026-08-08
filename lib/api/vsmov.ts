@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import {
   VSMovListResponse,
   VSMovTaxonomyResponse,
@@ -256,66 +257,68 @@ export async function searchMovies(
 }
 
 /**
- * Fetch detailed movie information and episode servers by movie slug
+ * Fetch detailed movie information and episode servers by movie slug (React request-memoized)
  */
-export async function getMovieDetail(
-  slug: string
-): Promise<{ movie: MovieDetailModel | null; error?: VSMovApiError | null }> {
-  if (!slug) return { movie: null, error: null };
-  const url = `${BASE_URL}/phim/${slug}`;
-  const { data, error } = await fetchJson<VSMovDetailResponse>(url, 60);
+export const getMovieDetail = cache(
+  async (
+    slug: string
+  ): Promise<{ movie: MovieDetailModel | null; error?: VSMovApiError | null }> => {
+    if (!slug) return { movie: null, error: null };
+    const url = `${BASE_URL}/phim/${slug}`;
+    const { data, error } = await fetchJson<VSMovDetailResponse>(url, 60);
 
-  let needFallback = false;
-  if (!data || !data.movie) {
-    needFallback = true;
-  } else if (data.episodes && data.episodes[0]?.server_data?.length) {
-    // Check if primary server is missing early episodes (e.g., starts at episode 551 or 1156)
-    const firstEpName = data.episodes[0].server_data[0]?.name || '';
-    const match = firstEpName.match(/(\d+)/);
-    if (match && parseInt(match[1], 10) > 20) {
+    let needFallback = false;
+    if (!data || !data.movie) {
       needFallback = true;
-    }
-  }
-
-  if (needFallback) {
-    const candidateSlugs = [slug];
-    if (slug === 'one-piece') candidateSlugs.push('dao-hai-tac');
-    if (slug === 'dao-hai-tac') candidateSlugs.push('one-piece');
-
-    for (const candidate of candidateSlugs) {
-      try {
-        const fallbackRes = await fetch(`https://phimapi.com/phim/${candidate}`, {
-          next: { revalidate: 300 },
-        });
-        if (fallbackRes.ok) {
-          const fallbackData = (await fallbackRes.json()) as VSMovDetailResponse;
-          if (fallbackData && fallbackData.movie && fallbackData.episodes?.length) {
-            const normalized = normalizeMovieDetail(fallbackData);
-            if (normalized) {
-              return { movie: normalized, error: null };
-            }
-          }
-        }
-      } catch {
-        // Ignore fallback fetch error and continue
+    } else if (data.episodes && data.episodes[0]?.server_data?.length) {
+      // Check if primary server is missing early episodes (e.g., starts at episode 551 or 1156)
+      const firstEpName = data.episodes[0].server_data[0]?.name || '';
+      const match = firstEpName.match(/(\d+)/);
+      if (match && parseInt(match[1], 10) > 20) {
+        needFallback = true;
       }
     }
-  }
 
-  if (!data || !data.movie) {
-    return { movie: null, error };
-  }
+    if (needFallback) {
+      const candidateSlugs = [slug];
+      if (slug === 'one-piece') candidateSlugs.push('dao-hai-tac');
+      if (slug === 'dao-hai-tac') candidateSlugs.push('one-piece');
 
-  return {
-    movie: normalizeMovieDetail(data),
-    error: null,
-  };
-}
+      for (const candidate of candidateSlugs) {
+        try {
+          const fallbackRes = await fetch(`https://phimapi.com/phim/${candidate}`, {
+            next: { revalidate: 300 },
+          });
+          if (fallbackRes.ok) {
+            const fallbackData = (await fallbackRes.json()) as VSMovDetailResponse;
+            if (fallbackData && fallbackData.movie && fallbackData.episodes?.length) {
+              const normalized = normalizeMovieDetail(fallbackData);
+              if (normalized) {
+                return { movie: normalized, error: null };
+              }
+            }
+          }
+        } catch {
+          // Ignore fallback fetch error and continue
+        }
+      }
+    }
+
+    if (!data || !data.movie) {
+      return { movie: null, error };
+    }
+
+    return {
+      movie: normalizeMovieDetail(data),
+      error: null,
+    };
+  }
+);
 
 /**
- * Fetch all categories / genres taxonomy
+ * Fetch all categories / genres taxonomy (React request-memoized)
  */
-export async function getGenresList(): Promise<CategoryModel[]> {
+export const getGenresList = cache(async (): Promise<CategoryModel[]> => {
   const url = `${BASE_URL}/the-loai`;
   const { data } = await fetchJson<VSMovTaxonomyResponse>(url, 86400);
 
@@ -328,12 +331,12 @@ export async function getGenresList(): Promise<CategoryModel[]> {
     name: item.name,
     slug: item.slug,
   }));
-}
+});
 
 /**
- * Fetch all countries taxonomy
+ * Fetch all countries taxonomy (React request-memoized)
  */
-export async function getCountriesList(): Promise<CountryModel[]> {
+export const getCountriesList = cache(async (): Promise<CountryModel[]> => {
   const url = `${BASE_URL}/quoc-gia`;
   const { data } = await fetchJson<VSMovTaxonomyResponse>(url, 86400);
 
@@ -346,12 +349,12 @@ export async function getCountriesList(): Promise<CountryModel[]> {
     name: item.name,
     slug: item.slug,
   }));
-}
+});
 
 /**
- * Fetch all release years taxonomy from VSMov API /api/nam
+ * Fetch all release years taxonomy from VSMov API /api/nam (React request-memoized)
  */
-export async function getYearsList(): Promise<YearOptionModel[]> {
+export const getYearsList = cache(async (): Promise<YearOptionModel[]> => {
   const url = `${BASE_URL}/nam`;
   const { data } = await fetchJson<VSMovTaxonomyResponse>(url, 86400);
 
@@ -373,7 +376,7 @@ export async function getYearsList(): Promise<YearOptionModel[]> {
     .sort((a, b) => b.year - a.year);
 
   return parsed.length > 0 ? parsed : generateFallbackYears();
-}
+});
 
 function generateFallbackYears(): YearOptionModel[] {
   const currentYear = new Date().getFullYear();

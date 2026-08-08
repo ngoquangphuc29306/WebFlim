@@ -7,9 +7,7 @@ import { MovieCardModel } from '@/types/movie';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import EpisodeSelector from '@/components/movie/EpisodeSelector';
 import MovieRow from '@/components/movie/MovieRow';
-import { Film, Info, Calendar, Clock, Star, Users } from 'lucide-react';
-
-export const dynamic = 'force-dynamic';
+import { Info, Calendar, Star, Users } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ slug: string }>;

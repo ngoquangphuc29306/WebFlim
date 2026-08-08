@@ -6,6 +6,8 @@ import RecentHistoryRow from '@/components/movie/RecentHistoryRow';
 import Link from 'next/link';
 import { Flame, Film, Tv, Sparkles, Tag, Clapperboard } from 'lucide-react';
 
+export const revalidate = 60;
+
 export default async function HomePage() {
   const [data, genres] = await Promise.all([
     getHomepageData(),

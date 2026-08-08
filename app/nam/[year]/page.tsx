@@ -5,8 +5,6 @@ import { getMoviesByYear } from '@/lib/api/vsmov';
 import MovieGrid from '@/components/movie/MovieGrid';
 import { Calendar } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
-
 interface PageProps {
   params: Promise<{ year: string }>;
   searchParams: Promise<{ page?: string }>;

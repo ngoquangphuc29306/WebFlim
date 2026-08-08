@@ -5,8 +5,6 @@ import { getMoviesByCountry, getCountriesList } from '@/lib/api/vsmov';
 import MovieGrid from '@/components/movie/MovieGrid';
 import { Globe } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
-
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string }>;
