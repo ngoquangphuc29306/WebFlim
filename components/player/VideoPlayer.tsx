@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import {
   RefreshCw,
   Maximize2,
@@ -166,6 +166,7 @@ function VideoPlayerInner({
   const networkRecoveryCountRef = useRef<number>(0);
   const mediaRecoveryCountRef = useRef<number>(0);
   const fallbackTriggeredRef = useRef<boolean>(false);
+  const sourceGenerationRef = useRef<number>(0);
   const activeEpisodeRef = useRef({ movieSlug, episodeSlug });
 
   useEffect(() => {
@@ -309,8 +310,11 @@ function VideoPlayerInner({
     }
   }, [movieSlug, movieTitle, posterUrl, episodeName, episodeSlug, serverName, serverIndex, embedUrl, m3u8Url]);
 
-  // HLS stream setup & HLS.js cross-browser integration
+  // HLS stream setup & HLS.js cross-browser integration with lazy dynamic import & race guards
   useEffect(() => {
+    let isCancelled = false;
+    const currentGen = ++sourceGenerationRef.current;
+
     // Reset recovery counters on new source setup
     networkRecoveryCountRef.current = 0;
     mediaRecoveryCountRef.current = 0;
@@ -328,7 +332,9 @@ function VideoPlayerInner({
 
     if (!useDirectStream || !m3u8Url) {
       queueMicrotask(() => {
-        setPlayerMode(embedUrl ? 'embed' : 'unavailable');
+        if (!isCancelled && sourceGenerationRef.current === currentGen) {
+          setPlayerMode(embedUrl ? 'embed' : 'unavailable');
+        }
       });
       return;
     }
@@ -340,53 +346,86 @@ function VideoPlayerInner({
     const canNative = video.canPlayType('application/vnd.apple.mpegurl') !== '';
 
     if (canNative) {
-      queueMicrotask(() => setPlayerMode('native-hls'));
-      setVideoSource(video, m3u8Url);
-    } else if (Hls.isSupported()) {
-      queueMicrotask(() => setPlayerMode('hls-js'));
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-      });
-      hlsRef.current = hls;
-
-      hls.loadSource(m3u8Url);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          console.warn('HLS.js fatal error encountered:', data.type, data.details);
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              if (networkRecoveryCountRef.current < MAX_NETWORK_RECOVERY_ATTEMPTS) {
-                networkRecoveryCountRef.current += 1;
-                console.info(`HLS.js network recovery attempt ${networkRecoveryCountRef.current}/${MAX_NETWORK_RECOVERY_ATTEMPTS}`);
-                hls.startLoad();
-              } else {
-                fallbackToEmbed('Exhausted network recovery retries');
-              }
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              if (mediaRecoveryCountRef.current < MAX_MEDIA_RECOVERY_ATTEMPTS) {
-                mediaRecoveryCountRef.current += 1;
-                console.info(`HLS.js media recovery attempt ${mediaRecoveryCountRef.current}/${MAX_MEDIA_RECOVERY_ATTEMPTS}`);
-                hls.recoverMediaError();
-              } else {
-                fallbackToEmbed('Exhausted media recovery retries');
-              }
-              break;
-            default:
-              fallbackToEmbed('Unrecoverable HLS error');
-              break;
-          }
+      queueMicrotask(() => {
+        if (!isCancelled && sourceGenerationRef.current === currentGen) {
+          setPlayerMode('native-hls');
         }
       });
+      setVideoSource(video, m3u8Url);
     } else {
-      // HLS not supported natively or via Hls.js -> fallback
-      queueMicrotask(() => fallbackToEmbed('HLS not supported natively or via Hls.js'));
+      // Direct HLS stream requires hls.js on non-native browsers -> Dynamically import hls.js
+      import('hls.js')
+        .then(({ default: HlsClass }) => {
+          if (isCancelled || sourceGenerationRef.current !== currentGen) {
+            return;
+          }
+
+          if (!HlsClass.isSupported()) {
+            fallbackToEmbed('HLS not supported in this browser environment');
+            return;
+          }
+
+          const currentVideo = videoRef.current;
+          if (!currentVideo) return;
+
+          queueMicrotask(() => {
+            if (!isCancelled && sourceGenerationRef.current === currentGen) {
+              setPlayerMode('hls-js');
+            }
+          });
+
+          const hls = new HlsClass({
+            enableWorker: true,
+            lowLatencyMode: false,
+          });
+          hlsRef.current = hls;
+
+          hls.loadSource(m3u8Url);
+          hls.attachMedia(currentVideo);
+
+          hls.on(HlsClass.Events.ERROR, (_event, data) => {
+            if (isCancelled || sourceGenerationRef.current !== currentGen) return;
+            if (data.fatal) {
+              console.warn('HLS.js fatal error encountered:', data.type, data.details);
+              switch (data.type) {
+                case HlsClass.ErrorTypes.NETWORK_ERROR:
+                  if (networkRecoveryCountRef.current < MAX_NETWORK_RECOVERY_ATTEMPTS) {
+                    networkRecoveryCountRef.current += 1;
+                    console.info(
+                      `HLS.js network recovery attempt ${networkRecoveryCountRef.current}/${MAX_NETWORK_RECOVERY_ATTEMPTS}`
+                    );
+                    hls.startLoad();
+                  } else {
+                    fallbackToEmbed('Exhausted network recovery retries');
+                  }
+                  break;
+                case HlsClass.ErrorTypes.MEDIA_ERROR:
+                  if (mediaRecoveryCountRef.current < MAX_MEDIA_RECOVERY_ATTEMPTS) {
+                    mediaRecoveryCountRef.current += 1;
+                    console.info(
+                      `HLS.js media recovery attempt ${mediaRecoveryCountRef.current}/${MAX_MEDIA_RECOVERY_ATTEMPTS}`
+                    );
+                    hls.recoverMediaError();
+                  } else {
+                    fallbackToEmbed('Exhausted media recovery retries');
+                  }
+                  break;
+                default:
+                  fallbackToEmbed('Unrecoverable HLS error');
+                  break;
+              }
+            }
+          });
+        })
+        .catch((err) => {
+          if (isCancelled || sourceGenerationRef.current !== currentGen) return;
+          console.error('Failed to dynamically load hls.js engine:', err);
+          fallbackToEmbed('Failed to initialize HLS engine');
+        });
     }
 
     return () => {
+      isCancelled = true;
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
