@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { getGenresList, getCountriesList } from '@/lib/api/vsmov';
+import { getGenresList, getCountriesList, getYearsList } from '@/lib/api/vsmov';
 
 export const metadata: Metadata = {
   title: 'VSMov Stream - Trải Nghiệm Xem Phim Trực Tuyến Đỉnh Cao',
@@ -17,15 +17,16 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [genres, countries] = await Promise.all([
+  const [genres, countries, years] = await Promise.all([
     getGenresList(),
     getCountriesList(),
+    getYearsList(),
   ]);
 
   return (
     <html lang="vi" className="dark scroll-smooth">
       <body className="bg-[#080808] text-[#f5f5f5] min-h-screen flex flex-col font-sans antialiased selection:bg-[#e50914] selection:text-white" suppressHydrationWarning>
-        <Header genres={genres} countries={countries} />
+        <Header genres={genres} countries={countries} years={years} />
         <main className="flex-1 pt-16 sm:pt-20">{children}</main>
         <Footer />
       </body>

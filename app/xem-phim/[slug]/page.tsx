@@ -78,23 +78,23 @@ export default async function WatchMoviePage({ params, searchParams }: PageProps
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6">
       {/* Title & Navigation Breadcrumb */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2 text-xs text-[#a3a3a3]">
-          <Link href="/" className="hover:text-white transition-colors">
+        <div className="flex items-center gap-1.5 text-xs text-[#a3a3a3] overflow-hidden whitespace-nowrap">
+          <Link href="/" className="hover:text-white transition-colors shrink-0">
             Trang chủ
           </Link>
-          <span>/</span>
-          <Link href={`/phim/${movie.slug}`} className="hover:text-white transition-colors truncate max-w-xs">
+          <span className="text-[#525252] shrink-0">/</span>
+          <Link href={`/phim/${movie.slug}`} className="hover:text-white transition-colors truncate max-w-[140px] xs:max-w-[200px] sm:max-w-xs">
             {movie.title}
           </Link>
-          <span>/</span>
-          <span className="text-white font-medium">Tập {activeEpisode?.name || 'Full'}</span>
+          <span className="text-[#525252] shrink-0">/</span>
+          <span className="text-white font-medium shrink-0">Tập {activeEpisode?.name || 'Full'}</span>
         </div>
 
-        <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight pt-1">
-          {movie.title} - {activeEpisode ? `Tập ${activeEpisode.name}` : ''}
+        <h1 className="text-base sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight pt-0.5 leading-snug line-clamp-2">
+          {movie.title} <span className="text-[#e50914] text-sm sm:text-xl font-bold">— Tập {activeEpisode?.name || 'Full'}</span>
         </h1>
       </div>
 

@@ -22,6 +22,22 @@ Local Repository Implementation (Class)
    Storage Engine (localStorage)
 ```
 
+## Referential Snapshot Stability
+
+All local repository implementations (`LocalWatchlistRepository`, `LocalWatchHistoryRepository`, `LocalPlaybackProgressRepository`, `LocalPlayerPreferencesRepository`) maintain a referentially stable snapshot cache:
+
+- **`cachedRaw`**: Raw JSON string retrieved from `localStorage`.
+- **`cachedParsed`**: Evaluated domain model object or array.
+
+When `get()` or `getAll()` is invoked, the repository checks if `raw === this.cachedRaw`. If unchanged, it returns the exact same object reference (`this.cachedParsed`). This satisfies `useSyncExternalStore` requirements and prevents unnecessary re-renders or React warnings across the UI.
+
+## Event Subscription & Multi-Tab Isolation
+
+Subscriptions manage state synchronization across both same-tab interactions and multi-tab browser activity:
+
+1. **Same-Tab Events**: Custom events (`vsmov_watchlist_updated`, `vsmov_history_updated`, `vsmov_progress_updated`, `vsmov_preferences_updated`) trigger immediate local subscriber callbacks.
+2. **Cross-Tab Filtering**: Browser `storage` events are filtered strictly by the domain's `storageKey` (or `event.key === null` on storage clear). Changes to Watchlist in one tab will not invalidate History, Progress, or Preferences in another tab.
+
 ## Storage Domains & Keys
 
 All storage keys remain strictly backward-compatible to guarantee zero data loss across deployments.
@@ -66,19 +82,30 @@ lib/persistence/
 
 ## Future Cloud Extension (Phase 13 Readiness)
 
-When Phase 13 introduces cloud synchronization (e.g., Supabase), the repository boundary can be extended without rewriting any UI components:
+When Phase 13 introduces cloud synchronization (e.g. Supabase Auth and Database), the synchronous **Local Repository contract** and asynchronous **Cloud Store contract** remain intentionally distinct:
 
 ```text
-                  UI / Component
-                        │
-                        ▼
-                  WatchlistService
-                        │
-         ┌──────────────┴──────────────┐
-         ▼                             ▼
-LocalWatchlistRepository      SupabaseWatchlistRepository
-   (localStorage)                   (Cloud DB Sync)
+                           ┌───────────────┐
+                           │      UI       │
+                           └───────┬───────┘
+                                   │
+                                   ▼
+                           Hooks / Services
+                                   │
+                                   ▼
+                         Local Repository
+                                   │
+                            ┌──────┴──────┐
+                            ▼             ▼
+                      localStorage    Sync Engine
+                                         │
+                                         ▼
+                                  Supabase Gateway
+                                         │
+                                         ▼
+                                     Supabase
 ```
 
-1. **Zero UI Changes**: Components depend on `useWatchlist()` or `watchlistRepository` interface.
-2. **Local-First Sync**: Reads and writes complete instantly locally, and background tasks synchronize state with the remote database.
+1. **Local-First Runtime**: UI components and React hooks continue to read synchronously from the Local Repository for instant, latency-free rendering.
+2. **Async Cloud Sync**: A background Sync Engine orchestrates cloud synchronization with Supabase asynchronously.
+3. **Guest & Auth Modes**: Guests operate purely on the Local Repository with zero network dependencies. Authenticated users benefit from background cloud synchronization without UI blocking.

@@ -49,12 +49,23 @@ export function safeRemoveItem(key: string, eventName?: string): boolean {
   }
 }
 
-export function subscribeStorageEvent(eventName: string, callback: () => void): () => void {
+export function subscribeStorageEvent(
+  eventName: string,
+  storageKey: string,
+  callback: () => void
+): () => void {
   if (!isBrowser()) return () => {};
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === storageKey || event.key === null) {
+      callback();
+    }
+  };
+
   window.addEventListener(eventName, callback);
-  window.addEventListener('storage', callback);
+  window.addEventListener('storage', handleStorage);
   return () => {
     window.removeEventListener(eventName, callback);
-    window.removeEventListener('storage', callback);
+    window.removeEventListener('storage', handleStorage);
   };
 }

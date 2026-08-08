@@ -74,7 +74,7 @@ export class LocalWatchHistoryRepository implements WatchHistoryRepository {
   }
 
   subscribe(callback: () => void): () => void {
-    return subscribeStorageEvent(EVENT_NAME, callback);
+    return subscribeStorageEvent(EVENT_NAME, STORAGE_KEY, callback);
   }
 
   private saveList(list: WatchHistoryItem[]): void {

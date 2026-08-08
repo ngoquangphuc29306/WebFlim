@@ -78,7 +78,7 @@ export class LocalWatchlistRepository implements WatchlistRepository {
   }
 
   subscribe(callback: () => void): () => void {
-    return subscribeStorageEvent(EVENT_NAME, callback);
+    return subscribeStorageEvent(EVENT_NAME, STORAGE_KEY, callback);
   }
 
   private saveList(list: WatchlistItem[]): void {

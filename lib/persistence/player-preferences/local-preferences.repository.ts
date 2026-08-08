@@ -10,12 +10,24 @@ const PREFERENCES_KEY = 'vsmov_player_preferences_v1';
 const EVENT_NAME = 'vsmov_preferences_updated';
 
 export class LocalPlayerPreferencesRepository implements PlayerPreferencesRepository {
+  private cachedRaw: string | null = null;
+  private cachedParsed: PlayerPreferences = DEFAULT_PREFERENCES;
+
   get(): PlayerPreferences {
     if (!isBrowser()) return DEFAULT_PREFERENCES;
 
     try {
       const raw = localStorage.getItem(PREFERENCES_KEY);
-      if (!raw) return DEFAULT_PREFERENCES;
+      if (raw === this.cachedRaw) {
+        return this.cachedParsed;
+      }
+
+      this.cachedRaw = raw;
+
+      if (!raw) {
+        this.cachedParsed = DEFAULT_PREFERENCES;
+        return DEFAULT_PREFERENCES;
+      }
 
       const parsed = JSON.parse(raw);
       const volume =
@@ -35,14 +47,18 @@ export class LocalPlayerPreferencesRepository implements PlayerPreferencesReposi
           ? parsed.autoplayNextEpisode
           : DEFAULT_PREFERENCES.autoplayNextEpisode;
 
-      return {
+      const validated: PlayerPreferences = {
         volume,
         muted,
         playbackRate,
         autoplayNextEpisode,
       };
+
+      this.cachedParsed = validated;
+      return this.cachedParsed;
     } catch (err) {
       console.warn('[Preferences] Failed to parse player preferences:', err);
+      this.cachedParsed = DEFAULT_PREFERENCES;
       return DEFAULT_PREFERENCES;
     }
   }
@@ -68,6 +84,12 @@ export class LocalPlayerPreferencesRepository implements PlayerPreferencesReposi
       }
 
       safeWriteJson(PREFERENCES_KEY, updated, EVENT_NAME);
+      this.cachedParsed = updated;
+      try {
+        this.cachedRaw = JSON.stringify(updated);
+      } catch {
+        this.cachedRaw = null;
+      }
       return updated;
     } catch (err) {
       console.warn('[Preferences] Failed to save player preferences:', err);
@@ -78,10 +100,16 @@ export class LocalPlayerPreferencesRepository implements PlayerPreferencesReposi
   reset(): PlayerPreferences {
     if (!isBrowser()) return DEFAULT_PREFERENCES;
     safeWriteJson(PREFERENCES_KEY, DEFAULT_PREFERENCES, EVENT_NAME);
+    this.cachedParsed = DEFAULT_PREFERENCES;
+    try {
+      this.cachedRaw = JSON.stringify(DEFAULT_PREFERENCES);
+    } catch {
+      this.cachedRaw = null;
+    }
     return DEFAULT_PREFERENCES;
   }
 
   subscribe(callback: () => void): () => void {
-    return subscribeStorageEvent(EVENT_NAME, callback);
+    return subscribeStorageEvent(EVENT_NAME, PREFERENCES_KEY, callback);
   }
 }

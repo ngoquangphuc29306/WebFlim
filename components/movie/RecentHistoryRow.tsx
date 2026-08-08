@@ -74,11 +74,11 @@ export default function RecentHistoryRow() {
                       e.stopPropagation();
                       removeProgress(item.movieSlug, item.episodeSlug);
                     }}
-                    className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/70 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors"
+                    className="absolute top-1.5 right-1.5 z-10 w-8 h-8 rounded-full bg-black/75 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors active:scale-90"
                     title="Xóa khỏi Tiếp tục xem"
                     aria-label={`Xóa ${item.movieTitle} tập ${item.episodeName || ''} khỏi Tiếp tục xem`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
 
                   <Link href={watchUrl} className="flex gap-3 min-w-0">
@@ -143,10 +143,11 @@ export default function RecentHistoryRow() {
                       e.stopPropagation();
                       removeHistoryItem(item.slug);
                     }}
-                    className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-black/70 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors"
-                    title="Xóa khỏi lịch sử"
+                    className="absolute top-1.5 right-1.5 z-10 w-8 h-8 rounded-full bg-black/75 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors active:scale-90"
+                    title="Xóa khỏi lịch sử xem"
+                    aria-label={`Xóa ${item.title} khỏi lịch sử xem`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-4 h-4" />
                   </button>
 
                   <Link href={watchUrl} className="flex gap-3 min-w-0 flex-1">

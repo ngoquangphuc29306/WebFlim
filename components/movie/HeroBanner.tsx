@@ -14,6 +14,9 @@ interface HeroBannerProps {
 
 export default function HeroBanner({ movies }: HeroBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
   const { isSaved, isMounted } = useWatchlist();
 
   useEffect(() => {
@@ -37,8 +40,38 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
     setCurrentIndex((prev) => (prev - 1 + movies.length) % movies.length);
   };
 
+  // Swipe gesture handling for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart === null || touchEnd === null) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
   return (
-    <div className="relative w-full h-[70vh] min-h-[500px] max-h-[750px] bg-[#080808] overflow-hidden text-white border-b border-[#1f1f1f]">
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="relative w-full h-[55vh] min-h-[390px] sm:h-[70vh] sm:min-h-[500px] max-h-[750px] bg-[#080808] overflow-hidden text-white border-b border-[#1f1f1f] select-none"
+    >
       {/* Background Backdrop Image */}
       <div className="absolute inset-0 z-0">
         <MovieImage
@@ -147,11 +180,11 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
 
       {/* Navigation Controls */}
       {movies.length > 1 && (
-        <div className="absolute bottom-6 right-6 sm:right-12 z-30 flex items-center gap-3">
+        <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-12 z-30 flex items-center gap-2 sm:gap-3">
           <button
             onClick={prevSlide}
             type="button"
-            className="p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1a1a1a] text-white border border-[#2a2a2a] transition-all hover:scale-110 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+            className="hidden sm:flex p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1a1a1a] text-white border border-[#2a2a2a] transition-all hover:scale-110 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
             aria-label="Previous Slide"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -175,7 +208,7 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
           <button
             onClick={nextSlide}
             type="button"
-            className="p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1a1a1a] text-[#f5f5f5] border border-[#2a2a2a] transition-all hover:scale-110 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+            className="hidden sm:flex p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1a1a1a] text-[#f5f5f5] border border-[#2a2a2a] transition-all hover:scale-110 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
             aria-label="Next Slide"
           >
             <ChevronRight className="w-5 h-5" />

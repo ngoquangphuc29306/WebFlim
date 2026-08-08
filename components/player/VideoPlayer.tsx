@@ -624,13 +624,13 @@ function VideoPlayerInner({
   const getPlayerModeLabel = () => {
     switch (playerMode) {
       case 'native-hls':
-        return 'HLS Trực Tiếp';
+        return 'HLS Direct';
       case 'hls-js':
-        return 'HLS.js Engine';
+        return 'HLS Engine';
       case 'embed':
-        return 'Nguồn Nhúng';
+        return 'Nguồn dự phòng';
       case 'unavailable':
-        return 'Không Khả Dụng';
+        return 'Không khả dụng';
     }
   };
 
@@ -720,30 +720,30 @@ function VideoPlayerInner({
       </div>
 
       {/* Control & Info Bar under Player */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-2 text-xs text-[#a3a3a3]">
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2 text-xs text-[#a3a3a3]">
         {/* Left Server/Episode Info */}
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 bg-[#141414] border border-[#262626] text-white font-medium px-2.5 py-1 rounded-md">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span className="flex items-center gap-1.5 bg-[#141414] border border-[#262626] text-white font-medium px-2.5 py-1 rounded-lg">
             <Tv className="w-3.5 h-3.5 text-[#e50914]" />
             {serverName || 'Server Vietsub'}
           </span>
-          <span className="bg-[#e50914] text-white font-bold px-2 py-1 rounded-md">
+          <span className="bg-[#e50914] text-white font-bold px-2.5 py-1 rounded-lg">
             Tập {episodeName}
           </span>
-          <span className="bg-[#181818] border border-[#262626] text-[#737373] text-[11px] px-2 py-1 rounded-md">
+          <span className="hidden xs:inline-block bg-[#181818] border border-[#262626] text-[#737373] text-[11px] px-2 py-1 rounded-lg">
             {getPlayerModeLabel()}
           </span>
         </div>
 
         {/* Right Controls (Speed, Volume, PiP, Auto-next toggle, Reload, Theater) */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {useDirectStream && (
             <>
               {/* Speed Selector */}
               <div className="relative">
                 <button
                   onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                  className="flex items-center gap-1 bg-[#141414] hover:bg-[#1a1a1a] text-white px-2.5 py-1.5 rounded-md border border-[#262626] transition-colors"
+                  className="flex items-center gap-1 bg-[#141414] hover:bg-[#1a1a1a] text-white px-2.5 py-1.5 rounded-lg border border-[#262626] transition-colors"
                   title="Tốc độ phát"
                 >
                   <Gauge className="w-3.5 h-3.5 text-[#e50914]" />
@@ -770,7 +770,7 @@ function VideoPlayerInner({
               </div>
 
               {/* Volume Slider & Mute */}
-              <div className="hidden sm:flex items-center gap-1 bg-[#141414] border border-[#262626] px-2.5 py-1 rounded-md">
+              <div className="hidden sm:flex items-center gap-1 bg-[#141414] border border-[#262626] px-2.5 py-1 rounded-lg">
                 <button
                   onClick={handleMuteToggle}
                   className="text-[#a3a3a3] hover:text-white transition-colors"
@@ -797,7 +797,7 @@ function VideoPlayerInner({
               {pipSupported && (
                 <button
                   onClick={handleTogglePiP}
-                  className="hidden sm:flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-2.5 py-1.5 rounded-md border border-[#262626] transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-2.5 py-1.5 rounded-lg border border-[#262626] transition-colors"
                   title="Xem ở cửa sổ nổi (Picture-in-Picture)"
                 >
                   <PictureInPicture2 className="w-3.5 h-3.5 text-[#e50914]" />
@@ -811,7 +811,7 @@ function VideoPlayerInner({
           {capabilities.canDetectEnded && (
             <button
               onClick={handleAutoplayToggle}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors ${
                 prefs.autoplayNextEpisode
                   ? 'bg-[#181818] border-[#e50914] text-white font-semibold'
                   : 'bg-[#141414] border-[#262626] text-[#737373] hover:text-white'
@@ -819,24 +819,25 @@ function VideoPlayerInner({
               title="Tự động phát tập tiếp theo khi hết phim"
             >
               <FastForward className={`w-3.5 h-3.5 ${prefs.autoplayNextEpisode ? 'text-[#e50914]' : ''}`} />
-              <span>Tự chuyển tập</span>
+              <span className="hidden xs:inline">Tự chuyển tập</span>
             </button>
           )}
 
           {/* Reload Player */}
           <button
             onClick={reloadPlayer}
-            className="flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-3 py-1.5 rounded-md border border-[#262626] transition-colors"
+            className="flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-2.5 py-1.5 rounded-lg border border-[#262626] transition-colors"
             title="Tải lại trình phát nếu bị giật hoặc đứng hình"
+            aria-label="Tải lại trình phát"
           >
             <RefreshCw className="w-3.5 h-3.5 text-[#e50914]" />
-            <span>Tải lại</span>
+            <span className="hidden xs:inline">Tải lại</span>
           </button>
 
           {/* Theater Mode */}
           <button
             onClick={() => setIsTheaterMode(!isTheaterMode)}
-            className="hidden sm:flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-3 py-1.5 rounded-md border border-[#262626] transition-colors"
+            className="hidden sm:flex items-center gap-1.5 bg-[#141414] hover:bg-[#1a1a1a] text-white px-3 py-1.5 rounded-lg border border-[#262626] transition-colors"
           >
             <Maximize2 className="w-3.5 h-3.5 text-[#e50914]" />
             <span>{isTheaterMode ? 'Thu nhỏ' : 'Rạp phim'}</span>

@@ -62,14 +62,14 @@ export default function MovieCard({ movie, priority = false }: MovieCardProps) {
             onClick={handleBookmarkClick}
             type="button"
             aria-label={saved ? `Bỏ khỏi danh sách phim ${movie.title}` : `Thêm ${movie.title} vào danh sách`}
-            className={`pointer-events-auto p-1.5 rounded-full transition-transform duration-150 active:scale-90 shadow-md ${
+            className={`pointer-events-auto p-2 sm:p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full transition-transform duration-150 active:scale-90 shadow-md ${
               saved
                 ? 'bg-[#e50914] text-white'
-                : 'bg-[#080808]/75 text-[#a3a3a3] hover:text-white hover:bg-[#080808]'
+                : 'bg-[#080808]/85 text-[#d4d4d4] hover:text-white hover:bg-[#080808]'
             }`}
             title={saved ? 'Xóa khỏi danh sách yêu thích' : 'Thêm vào danh sách yêu thích'}
           >
-            <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-current' : ''}`} />
+            <Bookmark className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${saved ? 'fill-current' : ''}`} />
           </button>
         </div>
 

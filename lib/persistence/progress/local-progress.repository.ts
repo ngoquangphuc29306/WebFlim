@@ -107,7 +107,7 @@ export class LocalPlaybackProgressRepository implements PlaybackProgressReposito
   }
 
   subscribe(callback: () => void): () => void {
-    return subscribeStorageEvent(EVENT_NAME, callback);
+    return subscribeStorageEvent(EVENT_NAME, STORAGE_KEY, callback);
   }
 
   private saveList(list: PlaybackProgress[]): void {

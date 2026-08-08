@@ -9,6 +9,8 @@ import {
   MovieDetailModel,
   CategoryModel,
   CountryModel,
+  YearOptionModel,
+  CatalogRequest,
 } from '@/types/movie';
 import { normalizeMovie, normalizeMovieDetail } from './normalizers';
 
@@ -20,6 +22,18 @@ const DEFAULT_PAGINATION: VSMovPagination = {
   currentPage: 1,
   totalPages: 1,
 };
+
+export const POPULAR_COUNTRIES_FALLBACK: CountryModel[] = [
+  { id: 'han-quoc', name: 'Hàn Quốc', slug: 'han-quoc' },
+  { id: 'trung-quoc', name: 'Trung Quốc', slug: 'trung-quoc' },
+  { id: 'au-my', name: 'Âu Mỹ', slug: 'au-my' },
+  { id: 'nhat-ban', name: 'Nhật Bản', slug: 'nhat-ban' },
+  { id: 'viet-nam', name: 'Việt Nam', slug: 'viet-nam' },
+  { id: 'thai-lan', name: 'Thái Lan', slug: 'thai-lan' },
+  { id: 'hong-kong', name: 'Hong Kong', slug: 'hong-kong' },
+  { id: 'dai-loan', name: 'Đài Loan', slug: 'dai-loan' },
+  { id: 'an-do', name: 'Ấn Độ', slug: 'an-do' },
+];
 
 /**
  * Reusable fetch helper with error handling & caching
@@ -286,14 +300,137 @@ export async function getCountriesList(): Promise<CountryModel[]> {
   const url = `${BASE_URL}/quoc-gia`;
   const { data } = await fetchJson<VSMovTaxonomyResponse>(url, 86400);
 
-  if (!data || !data.data || !Array.isArray(data.data.items)) {
-    return [];
+  if (!data || !data.data || !Array.isArray(data.data.items) || data.data.items.length === 0) {
+    return POPULAR_COUNTRIES_FALLBACK;
   }
 
   return data.data.items.map((item) => ({
     id: item._id,
     name: item.name,
     slug: item.slug,
+  }));
+}
+
+/**
+ * Fetch all release years taxonomy from VSMov API /api/nam
+ */
+export async function getYearsList(): Promise<YearOptionModel[]> {
+  const url = `${BASE_URL}/nam`;
+  const { data } = await fetchJson<VSMovTaxonomyResponse>(url, 86400);
+
+  if (!data || !data.data || !Array.isArray(data.data.items) || data.data.items.length === 0) {
+    return generateFallbackYears();
+  }
+
+  const parsed = data.data.items
+    .map((item) => {
+      const num = parseInt(item.name || item.slug, 10);
+      return {
+        id: item._id,
+        name: item.name,
+        slug: item.slug,
+        year: isNaN(num) ? 0 : num,
+      };
+    })
+    .filter((item) => item.year >= 1900 && item.year <= 2030)
+    .sort((a, b) => b.year - a.year);
+
+  return parsed.length > 0 ? parsed : generateFallbackYears();
+}
+
+function generateFallbackYears(): YearOptionModel[] {
+  const currentYear = new Date().getFullYear();
+  const years: YearOptionModel[] = [];
+  for (let y = currentYear; y >= 2000; y--) {
+    years.push({
+      id: String(y),
+      name: String(y),
+      slug: String(y),
+      year: y,
+    });
+  }
+  return years;
+}
+
+/**
+ * Fetches movies for discovery/catalog based on a resolved CatalogRequest
+ */
+export async function getCatalogMovies(request: CatalogRequest): Promise<{
+  items: MovieCardModel[];
+  pagination: VSMovPagination;
+  title: string;
+  error?: VSMovApiError | null;
+}> {
+  const { endpointType, slug, query } = request;
+  const page = query.page || 1;
+
+  if (endpointType === 'genre' && slug) {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    if (query.country) params.set('country', query.country);
+    if (query.year) params.set('year', String(query.year));
+    if (query.type) params.set('type', query.type);
+
+    const url = `${BASE_URL}/the-loai/${slug}?${params.toString()}`;
+    const { data, error } = await fetchJson<VSMovListResponse>(url, 300);
+
+    if (!data || !Array.isArray(data.items)) {
+      return { items: [], pagination: DEFAULT_PAGINATION, title: 'Khám Phá Phim', error };
+    }
+
+    return {
+      items: data.items.map(normalizeMovie),
+      pagination: data.pagination || DEFAULT_PAGINATION,
+      title: 'Khám Phá Phim',
+      error: null,
+    };
+  }
+
+  if (endpointType === 'country' && slug) {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    if (query.year) params.set('year', String(query.year));
+    if (query.type) params.set('type', query.type);
+
+    const url = `${BASE_URL}/quoc-gia/${slug}?${params.toString()}`;
+    const { data, error } = await fetchJson<VSMovListResponse>(url, 300);
+
+    if (!data || !Array.isArray(data.items)) {
+      return { items: [], pagination: DEFAULT_PAGINATION, title: 'Khám Phá Phim', error };
+    }
+
+    return {
+      items: data.items.map(normalizeMovie),
+      pagination: data.pagination || DEFAULT_PAGINATION,
+      title: 'Khám Phá Phim',
+      error: null,
+    };
+  }
+
+  if (endpointType === 'year' && slug) {
+    const url = `${BASE_URL}/nam/${slug}?page=${page}`;
+    const { data, error } = await fetchJson<VSMovListResponse>(url, 300);
+
+    if (!data || !Array.isArray(data.items)) {
+      return { items: [], pagination: DEFAULT_PAGINATION, title: 'Khám Phá Phim', error };
+    }
+
+    return {
+      items: data.items.map(normalizeMovie),
+      pagination: data.pagination || DEFAULT_PAGINATION,
+      title: 'Khám Phá Phim',
+      error: null,
+    };
+  }
+
+  if (endpointType === 'type' && slug) {
+    return getMovieListBySlug(slug, page);
+  }
+
+  // Default: latest updated movies
+  return getLatestMovies(page).then((res) => ({
+    ...res,
+    title: 'Tất Cả Phim Mới Cập Nhật',
   }));
 }
 

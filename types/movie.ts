@@ -142,6 +142,38 @@ export interface CountryModel {
   slug: string;
 }
 
+export interface YearOptionModel {
+  id: number | string;
+  name: string;
+  slug: string;
+  year: number;
+}
+
+export interface CatalogFilters {
+  genre?: string;
+  country?: string;
+  year?: number;
+  type?: 'series' | 'single';
+  page?: number;
+}
+
+export interface CatalogRequest {
+  endpointType: 'genre' | 'country' | 'year' | 'type' | 'default';
+  slug?: string;
+  query: {
+    country?: string;
+    year?: number;
+    type?: 'series' | 'single';
+    page: number;
+  };
+}
+
+export interface CatalogResolverResult {
+  supported: boolean;
+  reason?: string;
+  request?: CatalogRequest;
+}
+
 export interface MovieCardModel {
   id: string;
   slug: string;

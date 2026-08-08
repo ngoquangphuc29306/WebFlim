@@ -383,7 +383,10 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
 
       {/* Mobile Sticky Bottom CTA Bar */}
       {showStickyCta && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0c0c]/95 backdrop-blur-md border-t border-[#262626] p-3 md:hidden flex items-center gap-3 animate-in slide-in-from-bottom-4 duration-300 shadow-2xl">
+        <div
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+          className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0c0c]/95 backdrop-blur-md border-t border-[#262626] p-3 md:hidden flex items-center gap-3 animate-in slide-in-from-bottom-4 duration-300 shadow-2xl"
+        >
           <Link
             href={`/xem-phim/${movie.slug}${firstEpisode ? `?ep=${firstEpisode.slug}&server=${activeServerIdx}` : ''}`}
             className="flex-1 flex items-center justify-center gap-2 bg-[#e50914] hover:bg-[#f40612] text-white font-bold py-3 px-4 rounded-xl text-sm shadow-lg shadow-[#e50914]/30"
