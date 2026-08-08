@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS public.playback_progress (
   episode_name TEXT,
   server_index INT,
   server_name TEXT,
-  current_time DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "current_time" DOUBLE PRECISION NOT NULL DEFAULT 0,
   duration DOUBLE PRECISION NOT NULL DEFAULT 0,
   completed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -153,10 +153,13 @@ CREATE POLICY "Users can update own player preferences" ON public.player_prefere
 CREATE POLICY "Users can delete own player preferences" ON public.player_preferences
   FOR DELETE USING (auth.uid() = user_id);
 
--- 6. AUTOMATIC SERVER_UPDATED_AT TRIGGER FUNCTION
+-- 6. AUTOMATIC SERVER_UPDATED_AT & LWW TRIGGER FUNCTION
 CREATE OR REPLACE FUNCTION public.set_server_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
+  IF NEW.client_updated_at IS NOT NULL AND OLD.client_updated_at IS NOT NULL AND NEW.client_updated_at < OLD.client_updated_at THEN
+    RETURN OLD; -- Reject stale updates at database level
+  END IF;
   NEW.server_updated_at = NOW();
   RETURN NEW;
 END;

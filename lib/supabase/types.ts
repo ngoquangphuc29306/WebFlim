@@ -97,7 +97,12 @@ export function mapDbToWatchlistItem(row: DbWatchlistRow): MovieCardModel {
   };
 }
 
-export function mapWatchlistItemToDb(userId: string, item: MovieCardModel): Omit<DbWatchlistRow, 'id' | 'created_at' | 'server_updated_at'> {
+export function mapWatchlistItemToDb(
+  userId: string,
+  item: MovieCardModel,
+  clientUpdatedAt?: number
+): Omit<DbWatchlistRow, 'id' | 'created_at' | 'server_updated_at'> {
+  const ts = clientUpdatedAt || Date.now();
   return {
     user_id: userId,
     movie_slug: item.slug,
@@ -110,7 +115,7 @@ export function mapWatchlistItemToDb(userId: string, item: MovieCardModel): Omit
     quality: item.quality || null,
     categories_json: JSON.stringify(item.categories || []),
     countries_json: JSON.stringify(item.countries || []),
-    client_updated_at: new Date().toISOString(),
+    client_updated_at: new Date(ts).toISOString(),
   };
 }
 
@@ -127,8 +132,13 @@ export function mapDbToWatchHistoryItem(row: DbWatchHistoryRow): WatchHistoryIte
   };
 }
 
-export function mapWatchHistoryItemToDb(userId: string, item: WatchHistoryItem): Omit<DbWatchHistoryRow, 'id' | 'created_at' | 'server_updated_at'> {
-  const isoTime = new Date(item.updatedAt || Date.now()).toISOString();
+export function mapWatchHistoryItemToDb(
+  userId: string,
+  item: WatchHistoryItem,
+  clientUpdatedAt?: number
+): Omit<DbWatchHistoryRow, 'id' | 'created_at' | 'server_updated_at'> {
+  const ts = clientUpdatedAt || item.updatedAt || Date.now();
+  const isoTime = new Date(ts).toISOString();
   return {
     user_id: userId,
     movie_slug: item.slug,
@@ -159,7 +169,12 @@ export function mapDbToPlaybackProgress(row: DbPlaybackProgressRow): PlaybackPro
   };
 }
 
-export function mapPlaybackProgressToDb(userId: string, item: PlaybackProgress): Omit<DbPlaybackProgressRow, 'id' | 'created_at' | 'server_updated_at'> {
+export function mapPlaybackProgressToDb(
+  userId: string,
+  item: PlaybackProgress,
+  clientUpdatedAt?: number
+): Omit<DbPlaybackProgressRow, 'id' | 'created_at' | 'server_updated_at'> {
+  const ts = clientUpdatedAt || item.updatedAt || Date.now();
   return {
     user_id: userId,
     movie_slug: item.movieSlug,
@@ -172,7 +187,7 @@ export function mapPlaybackProgressToDb(userId: string, item: PlaybackProgress):
     current_time: item.currentTime,
     duration: item.duration,
     completed: item.completed,
-    client_updated_at: new Date(item.updatedAt || Date.now()).toISOString(),
+    client_updated_at: new Date(ts).toISOString(),
   };
 }
 
@@ -190,13 +205,18 @@ export function mapDbToPlayerPreferences(row: DbPlayerPreferencesRow): PlayerPre
   };
 }
 
-export function mapPlayerPreferencesToDb(userId: string, prefs: PlayerPreferences): Omit<DbPlayerPreferencesRow, 'server_updated_at'> {
+export function mapPlayerPreferencesToDb(
+  userId: string,
+  prefs: PlayerPreferences,
+  clientUpdatedAt?: number
+): Omit<DbPlayerPreferencesRow, 'server_updated_at'> {
+  const ts = clientUpdatedAt || prefs.updatedAt || Date.now();
   return {
     user_id: userId,
     volume: prefs.volume,
     muted: prefs.muted,
     playback_rate: prefs.playbackRate,
     autoplay_next_episode: prefs.autoplayNextEpisode,
-    client_updated_at: new Date(prefs.updatedAt || Date.now()).toISOString(),
+    client_updated_at: new Date(ts).toISOString(),
   };
 }

@@ -33,13 +33,13 @@ export const preferencesGateway = {
     return mapDbToPlayerPreferences(data as DbPlayerPreferencesRow);
   },
 
-  async upsert(userId: string, prefs: PlayerPreferences): Promise<void> {
+  async upsert(userId: string, prefs: PlayerPreferences, clientUpdatedAt?: number): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'preferences', 'upsert');
     }
 
-    const payload = mapPlayerPreferencesToDb(userId, prefs);
+    const payload = mapPlayerPreferencesToDb(userId, prefs, clientUpdatedAt);
     const { error } = await supabase
       .from('player_preferences')
       .upsert(payload, { onConflict: 'user_id' });

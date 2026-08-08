@@ -77,7 +77,7 @@ export function saveSyncQueue(queue: SyncMutation[]): void {
 }
 
 export function enqueueMutation(
-  mutation: Omit<SyncMutation, 'id' | 'createdAt' | 'updatedAt'>
+  mutation: Omit<SyncMutation, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: number; updatedAt?: number }
 ): SyncMutation {
   const now = Date.now();
   const queue = getSyncQueue();
@@ -111,12 +111,15 @@ export function enqueueMutation(
       ? `${mutation.movieSlug}:${mutation.episodeSlug}`
       : mutation.movieSlug || mutation.domain);
 
+  const createdAt = mutation.createdAt || now;
+  const updatedAt = mutation.updatedAt || now;
+
   const newMutation: SyncMutation = {
     ...mutation,
     id: `${mutation.domain}_${mutation.action}_${key}_${now}_${Math.random().toString(36).substring(2, 7)}`,
     key,
-    createdAt: now,
-    updatedAt: now,
+    createdAt,
+    updatedAt,
   };
 
   updatedQueue.push(newMutation);

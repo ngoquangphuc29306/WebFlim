@@ -34,6 +34,42 @@ export function getSyncMeta(): SyncMeta {
   };
 }
 
+export type AuthSyncTransition =
+  | 'pure-guest-to-user'
+  | 'same-user'
+  | 'user-to-guest'
+  | 'user-to-different-user'
+  | 'post-logout-guest-to-origin-user'
+  | 'post-logout-guest-to-different-user';
+
+export function determineAuthTransition(
+  previousUserId: string | null,
+  newUserId: string | null,
+  metaBeforeAuth: SyncMeta
+): AuthSyncTransition {
+  if (previousUserId === newUserId) {
+    return 'same-user';
+  }
+
+  if (newUserId === null) {
+    return 'user-to-guest';
+  }
+
+  if (previousUserId !== null) {
+    return 'user-to-different-user';
+  }
+
+  if (metaBeforeAuth.localStateOwnerUserId === null && metaBeforeAuth.guestMutationBaseUserId === null) {
+    return 'pure-guest-to-user';
+  }
+
+  if (metaBeforeAuth.guestMutationBaseUserId === newUserId) {
+    return 'post-logout-guest-to-origin-user';
+  }
+
+  return 'post-logout-guest-to-different-user';
+}
+
 export function saveSyncMeta(meta: SyncMeta): void {
   safeWriteJson(SYNC_META_KEY, meta);
 }

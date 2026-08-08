@@ -28,13 +28,13 @@ export const progressGateway = {
     return (data as DbPlaybackProgressRow[] || []).map(mapDbToPlaybackProgress);
   },
 
-  async upsert(userId: string, item: PlaybackProgress): Promise<void> {
+  async upsert(userId: string, item: PlaybackProgress, clientUpdatedAt?: number): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'progress', 'upsert');
     }
 
-    const payload = mapPlaybackProgressToDb(userId, item);
+    const payload = mapPlaybackProgressToDb(userId, item, clientUpdatedAt);
     const { error } = await supabase
       .from('playback_progress')
       .upsert(payload, { onConflict: 'user_id,movie_slug,episode_slug' });

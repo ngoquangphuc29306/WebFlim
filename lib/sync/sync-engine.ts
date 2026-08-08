@@ -2,7 +2,13 @@ import { watchlistGateway } from '@/lib/cloud/watchlist-gateway';
 import { historyGateway } from '@/lib/cloud/history-gateway';
 import { progressGateway } from '@/lib/cloud/progress-gateway';
 import { preferencesGateway } from '@/lib/cloud/preferences-gateway';
-import { getSyncMeta, updateSyncMeta, setLocalStateOwner } from './sync-meta';
+import {
+  getSyncMeta,
+  updateSyncMeta,
+  setLocalStateOwner,
+  determineAuthTransition,
+  AuthSyncTransition,
+} from './sync-meta';
 import {
   mergeWatchlist,
   mergeHistory,
@@ -22,7 +28,6 @@ import {
   getPendingMutationsForUser,
   dequeueMutation,
   rebindGuestMutationsToUser,
-  clearGuestMutations,
   SyncMutation,
 } from './sync-queue';
 
@@ -119,21 +124,24 @@ class SyncEngine {
   public async handleAuthChange(userId: string | null) {
     if (!isBrowser()) return;
 
+    const previousUserId = this.currentUserId;
+    const metaBeforeAuth = getSyncMeta();
+    const transition = determineAuthTransition(previousUserId, userId, metaBeforeAuth);
+
     // Same-user auth events (e.g. TOKEN_REFRESHED)
-    if (this.currentUserId === userId) {
+    if (transition === 'same-user') {
       if (userId) {
         this.startProgressFlushTimer();
         const pending = getPendingMutationsForUser(userId).length;
         const dirty = this.getDirtyProgressCountForUser(userId);
         if (!this.hasHydratedCurrentUser || pending > 0 || dirty > 0 || this.syncStatus === 'error' || this.syncStatus === 'offline') {
-          this.triggerSync();
+          this.triggerSync(userId, undefined, transition);
         }
       }
       return;
     }
 
     // Identity CHANGED (null -> A, A -> B, A -> null)
-    const previousUserId = this.currentUserId;
     this.syncGeneration++;
     const currentGen = this.syncGeneration;
     this.hasHydratedCurrentUser = false;
@@ -145,6 +153,7 @@ class SyncEngine {
         domain: 'preferences',
         action: 'upsert',
         payload: this.pendingDebouncedPrefs.prefs,
+        updatedAt: this.pendingDebouncedPrefs.prefs.updatedAt,
       });
       this.pendingDebouncedPrefs = null;
       if (this.prefsDebounceTimer) {
@@ -157,10 +166,7 @@ class SyncEngine {
     this.flushDirtyProgressToQueue(previousUserId);
     this.dirtyProgress.clear();
 
-    const meta = getSyncMeta();
-
-    if (!userId) {
-      // User A -> Logout -> Guest
+    if (transition === 'user-to-guest') {
       setLocalStateOwner(null, previousUserId);
       this.currentUserId = null;
       this.setStatus('idle');
@@ -168,33 +174,40 @@ class SyncEngine {
       return;
     }
 
-    // Guest -> User (or User A -> User B)
-    if (previousUserId === null) {
-      const baseUser = meta.guestMutationBaseUserId;
-      if (!baseUser) {
-        // Pure Guest -> User A: adopt guest mutations
-        rebindGuestMutationsToUser(userId);
-      } else if (baseUser === userId) {
-        // User A -> Logout -> Guest -> User A: adopt guest mutations
-        rebindGuestMutationsToUser(userId);
-      } else {
-        // User A -> Logout -> Guest -> User B (B !== A):
-        // Rebind guest mutations back to baseUser (A), so they stay owned by A and NOT B
-        rebindGuestMutationsToUser(baseUser);
-        // Clear local storage repositories so B gets B's workspace
-        this.clearLocalStorageRepositories();
-      }
+    if (transition === 'pure-guest-to-user' || transition === 'post-logout-guest-to-origin-user') {
+      rebindGuestMutationsToUser(userId!);
+      setLocalStateOwner(userId, null);
+      this.currentUserId = userId;
+      this.startProgressFlushTimer();
+      await this.triggerSync(userId!, currentGen, transition);
+      return;
     }
 
-    // Establish local state owner for target user immediately!
-    setLocalStateOwner(userId, null);
-    this.currentUserId = userId;
-    this.startProgressFlushTimer();
+    if (transition === 'post-logout-guest-to-different-user') {
+      const baseUser = metaBeforeAuth.guestMutationBaseUserId;
+      if (baseUser) {
+        rebindGuestMutationsToUser(baseUser);
+      }
+      this.clearLocalStorageRepositories();
+      setLocalStateOwner(userId, null);
+      this.currentUserId = userId;
+      this.startProgressFlushTimer();
+      await this.triggerSync(userId!, currentGen, transition);
+      return;
+    }
 
-    await this.triggerSync(userId, currentGen);
+    if (transition === 'user-to-different-user') {
+      // Direct User A -> User B account switch
+      this.clearLocalStorageRepositories();
+      setLocalStateOwner(userId, null);
+      this.currentUserId = userId;
+      this.startProgressFlushTimer();
+      await this.triggerSync(userId!, currentGen, transition);
+      return;
+    }
   }
 
-  public async triggerSync(userId?: string, gen?: number): Promise<void> {
+  public async triggerSync(userId?: string, gen?: number, transition?: AuthSyncTransition): Promise<void> {
     const targetUserId = userId || this.currentUserId;
     if (!targetUserId) {
       this.setStatus('idle');
@@ -221,7 +234,7 @@ class SyncEngine {
 
     // Launch new execution for targetUserId
     this.activeSyncUserId = targetUserId;
-    const promise = this.executeSync(targetUserId, targetGen).finally(() => {
+    const promise = this.executeSync(targetUserId, targetGen, transition).finally(() => {
       if (this.activeSyncPromise === promise) {
         this.activeSyncPromise = null;
         this.activeSyncUserId = null;
@@ -247,7 +260,7 @@ class SyncEngine {
     return promise;
   }
 
-  private async executeSync(userId: string, gen: number): Promise<void> {
+  private async executeSync(userId: string, gen: number, transition?: AuthSyncTransition): Promise<void> {
     if (!isBrowser()) return;
 
     if (!navigator.onLine) {
@@ -258,14 +271,12 @@ class SyncEngine {
     this.setStatus('syncing');
 
     try {
-      const meta = getSyncMeta();
-      const isUserSwitch = meta.localStateOwnerUserId !== null && meta.localStateOwnerUserId !== userId;
-      const isFirstGuestLogin = meta.localStateOwnerUserId === null && meta.guestMutationBaseUserId === null;
+      const isUserSwitch = transition === 'user-to-different-user' || transition === 'post-logout-guest-to-different-user';
+      const isPureGuestAdoption = transition === 'pure-guest-to-user';
 
       if (isUserSwitch) {
-        // User A -> User B: Clear User A's local state from storage for User B
+        // Clear User A's or guest local state from storage for User B
         this.clearLocalStorageRepositories();
-        // INVARIANT: Do NOT clear User A's queue! User A's queue remains stored under ownerUserId = A.
       }
 
       // 1. Flush any dirty progress for this user into queue as pending mutations
@@ -294,8 +305,8 @@ class SyncEngine {
 
         const prefsToSave = cloudPrefs || DEFAULT_PREFERENCES;
         safeWriteJson(STORAGE_KEYS.preferences, prefsToSave, STORAGE_EVENTS.preferences);
-      } else if (isFirstGuestLogin) {
-        // Guest -> First user login: Union merge guest items and enqueue local items for upload
+      } else if (isPureGuestAdoption) {
+        // Pure Guest -> First user login: Union merge legacy local guest items (even if queue was empty)
         const localWatchlist = watchlistRepository.getAll();
         const localHistory = watchHistoryRepository.getAll();
         const localProgress = playbackProgressRepository.getAll();
@@ -311,7 +322,7 @@ class SyncEngine {
         safeWriteJson(STORAGE_KEYS.progress, mergedProgress, STORAGE_EVENTS.progress);
         safeWriteJson(STORAGE_KEYS.preferences, mergedPrefs, STORAGE_EVENTS.preferences);
 
-        // Upload guest items
+        // Upload guest items to cloud for user
         for (const item of localWatchlist) {
           enqueueMutation({
             ownerUserId: userId,
@@ -328,6 +339,7 @@ class SyncEngine {
             action: 'upsert',
             movieSlug: item.slug,
             payload: item,
+            updatedAt: item.updatedAt,
           });
         }
         for (const item of localProgress) {
@@ -338,6 +350,7 @@ class SyncEngine {
             movieSlug: item.movieSlug,
             episodeSlug: item.episodeSlug,
             payload: item,
+            updatedAt: item.updatedAt,
           });
         }
         enqueueMutation({
@@ -345,6 +358,7 @@ class SyncEngine {
           domain: 'preferences',
           action: 'upsert',
           payload: mergedPrefs,
+          updatedAt: mergedPrefs.updatedAt,
         });
 
         await this.flushQueueWithRetry(userId, gen);
@@ -490,7 +504,7 @@ class SyncEngine {
     switch (mutation.domain) {
       case 'watchlist':
         if (mutation.action === 'upsert' && mutation.payload) {
-          await watchlistGateway.upsert(userId, mutation.payload);
+          await watchlistGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         } else if (mutation.action === 'remove' && mutation.movieSlug) {
           await watchlistGateway.remove(userId, mutation.movieSlug);
         } else if (mutation.action === 'clear') {
@@ -500,7 +514,7 @@ class SyncEngine {
 
       case 'history':
         if (mutation.action === 'upsert' && mutation.payload) {
-          await historyGateway.upsert(userId, mutation.payload);
+          await historyGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         } else if (mutation.action === 'remove' && mutation.movieSlug) {
           await historyGateway.remove(userId, mutation.movieSlug);
         } else if (mutation.action === 'clear') {
@@ -510,7 +524,7 @@ class SyncEngine {
 
       case 'progress':
         if (mutation.action === 'upsert' && mutation.payload) {
-          await progressGateway.upsert(userId, mutation.payload);
+          await progressGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         } else if (mutation.action === 'remove' && mutation.movieSlug) {
           await progressGateway.remove(userId, mutation.movieSlug, mutation.episodeSlug);
         } else if (mutation.action === 'clear') {
@@ -520,7 +534,7 @@ class SyncEngine {
 
       case 'preferences':
         if (mutation.action === 'upsert' && mutation.payload) {
-          await preferencesGateway.upsert(userId, mutation.payload);
+          await preferencesGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         }
         break;
     }
@@ -603,6 +617,7 @@ class SyncEngine {
       action: 'upsert',
       movieSlug: item.slug,
       payload: item,
+      updatedAt: item.updatedAt,
     });
     if (this.currentUserId) {
       this.triggerSync();
@@ -689,6 +704,7 @@ class SyncEngine {
           domain: 'preferences',
           action: 'upsert',
           payload: targetPrefs,
+          updatedAt: targetPrefs.updatedAt,
         });
         if (ownerUserId) {
           this.triggerSync(ownerUserId);
@@ -726,6 +742,7 @@ class SyncEngine {
           movieSlug: entry.progress.movieSlug,
           episodeSlug: entry.progress.episodeSlug,
           payload: entry.progress,
+          updatedAt: entry.progress.updatedAt,
         });
         keysToDelete.push(key);
       }

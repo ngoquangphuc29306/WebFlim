@@ -28,13 +28,13 @@ export const historyGateway = {
     return (data as DbWatchHistoryRow[] || []).map(mapDbToWatchHistoryItem);
   },
 
-  async upsert(userId: string, item: WatchHistoryItem): Promise<void> {
+  async upsert(userId: string, item: WatchHistoryItem, clientUpdatedAt?: number): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'history', 'upsert');
     }
 
-    const payload = mapWatchHistoryItemToDb(userId, item);
+    const payload = mapWatchHistoryItemToDb(userId, item, clientUpdatedAt);
     const { error } = await supabase
       .from('watch_history')
       .upsert(payload, { onConflict: 'user_id,movie_slug' });

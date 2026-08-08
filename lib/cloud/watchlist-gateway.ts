@@ -28,13 +28,13 @@ export const watchlistGateway = {
     return (data as DbWatchlistRow[] || []).map(mapDbToWatchlistItem);
   },
 
-  async upsert(userId: string, item: MovieCardModel): Promise<void> {
+  async upsert(userId: string, item: MovieCardModel, clientUpdatedAt?: number): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'watchlist', 'upsert');
     }
 
-    const payload = mapWatchlistItemToDb(userId, item);
+    const payload = mapWatchlistItemToDb(userId, item, clientUpdatedAt);
     const { error } = await supabase
       .from('watchlist')
       .upsert(payload, { onConflict: 'user_id,movie_slug' });
