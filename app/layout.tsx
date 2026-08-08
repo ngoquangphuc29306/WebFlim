@@ -5,7 +5,7 @@ import Footer from '@/components/layout/Footer';
 import BottomNav from '@/components/layout/BottomNav';
 import ToastContainer from '@/components/ui/Toast';
 import { Providers } from '@/app/providers';
-import { getGenresList, getCountriesList, getYearsList } from '@/lib/api/vsmov';
+import { getGenresList } from '@/lib/api/vsmov';
 
 export const metadata: Metadata = {
   title: 'PHEVO Stream - Trải Nghiệm Xem Phim Trực Tuyến Đỉnh Cao',
@@ -25,17 +25,13 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [genres, countries, years] = await Promise.all([
-    getGenresList(),
-    getCountriesList(),
-    getYearsList(),
-  ]);
+  const genres = await getGenresList().catch(() => []);
 
   return (
     <html lang="vi" className="dark scroll-smooth">
       <body className="bg-[#080808] text-[#f5f5f5] min-h-screen flex flex-col font-sans antialiased selection:bg-[#e50914] selection:text-white" suppressHydrationWarning>
         <Providers>
-          <Header genres={genres} countries={countries} years={years} />
+          <Header genres={genres} />
           <main className="flex-1 pt-16 sm:pt-20 pb-14 md:pb-0">{children}</main>
           <Footer />
           <BottomNav />
