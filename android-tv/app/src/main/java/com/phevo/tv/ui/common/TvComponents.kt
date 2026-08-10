@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,15 +27,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.phevo.tv.app.theme.PhevoTvColors
 import com.phevo.tv.app.theme.PhevoTvDimensions
 import com.phevo.tv.app.theme.PhevoTvShapes
+import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.domain.model.Episode
 import com.phevo.tv.domain.model.Movie
 
@@ -52,21 +57,31 @@ fun PhevoTvButton(
         enabled = enabled,
         modifier = modifier
             .height(PhevoTvDimensions.ButtonHeight)
+            .widthIn(min = PhevoTvDimensions.ButtonMinWidth)
             .onFocusChanged { focused = it.isFocused }
             .border(
-                width = if (focused) 2.dp else 0.dp,
+                width = if (focused) PhevoTvDimensions.FocusOutlineWidth else 0.dp,
                 color = if (focused) PhevoTvColors.FocusOutline else Color.Transparent,
                 shape = PhevoTvShapes.Button,
             ),
         shape = PhevoTvShapes.Button,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (primary) PhevoTvColors.BrandPrimary else PhevoTvColors.SurfaceElevated,
+            containerColor = when {
+                focused && primary -> PhevoTvColors.BrandFocused
+                primary -> PhevoTvColors.BrandPrimary
+                focused -> PhevoTvColors.SurfaceElevated
+                else -> PhevoTvColors.SurfaceSecondary
+            },
             contentColor = PhevoTvColors.TextPrimary,
             disabledContainerColor = PhevoTvColors.SurfaceSecondary,
             disabledContentColor = PhevoTvColors.TextDisabled,
         ),
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        Text(
+            label,
+            style = PhevoTvTypography.LabelLarge,
+            modifier = Modifier.padding(horizontal = PhevoTvDimensions.SpaceSM),
+        )
     }
 }
 
@@ -88,23 +103,25 @@ fun PosterMovieCard(
             title = movie.title,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(PhevoTvDimensions.PosterHeight),
+                .height(PhevoTvDimensions.PosterHeight)
+                .clip(PhevoTvShapes.Card),
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM + 2.dp))
         Text(
             text = movie.title,
-            style = MaterialTheme.typography.titleMedium,
+            style = PhevoTvTypography.TitleMedium,
             color = PhevoTvColors.TextPrimary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceXS))
         Text(
             text = buildString {
                 append(movie.year)
                 movie.episodeLabel?.let { append(" • $it") }
             },
-            style = MaterialTheme.typography.labelMedium,
-            color = PhevoTvColors.TextSecondary,
+            style = PhevoTvTypography.Metadata,
+            color = PhevoTvColors.TextMuted,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -128,11 +145,23 @@ fun LandscapeMovieCard(
             title = movie.title,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(PhevoTvDimensions.LandscapeHeight),
+                .height(PhevoTvDimensions.LandscapeHeight)
+                .clip(PhevoTvShapes.Card),
         )
-        Spacer(Modifier.height(8.dp))
-        Text(movie.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(movie.episodeLabel ?: "Tiếp tục xem", style = MaterialTheme.typography.labelMedium, color = PhevoTvColors.TextSecondary)
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM + 2.dp))
+        Text(
+            movie.title,
+            style = PhevoTvTypography.TitleMedium,
+            color = PhevoTvColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceXS))
+        Text(
+            movie.episodeLabel ?: "Tiếp tục xem",
+            style = PhevoTvTypography.Metadata,
+            color = PhevoTvColors.TextMuted,
+        )
     }
 }
 
@@ -150,13 +179,44 @@ fun ContinueWatchingCard(
             .phevoFocusedSurface(onFocused = { if (it) onFocused() })
             .clickable(onClick = onClick),
     ) {
-        FakeArtwork(movie.backdropToken, movie.title, Modifier.fillMaxWidth().height(PhevoTvDimensions.LandscapeHeight))
-        Spacer(Modifier.height(8.dp))
-        Text(movie.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(movie.episodeLabel ?: "Tiếp tục xem", style = MaterialTheme.typography.labelMedium, color = PhevoTvColors.TextSecondary)
-        Spacer(Modifier.height(6.dp))
-        Box(Modifier.fillMaxWidth().height(4.dp).background(PhevoTvColors.SurfaceElevated)) {
-            Box(Modifier.fillMaxWidth(progressPercent.coerceIn(0, 100) / 100f).height(4.dp).background(PhevoTvColors.BrandPrimary))
+        FakeArtwork(
+            movie.backdropToken,
+            movie.title,
+            Modifier
+                .fillMaxWidth()
+                .height(PhevoTvDimensions.LandscapeHeight)
+                .clip(PhevoTvShapes.Card),
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM + 2.dp))
+        Text(
+            movie.title,
+            style = PhevoTvTypography.TitleMedium,
+            color = PhevoTvColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceXS))
+        Text(
+            movie.episodeLabel ?: "Tiếp tục xem",
+            style = PhevoTvTypography.Metadata,
+            color = PhevoTvColors.TextMuted,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
+        // Progress bar with rounded corners
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(PhevoTvDimensions.ProgressBarHeight)
+                .clip(RoundedCornerShape(PhevoTvDimensions.ProgressBarRadius))
+                .background(PhevoTvColors.ProgressTrack),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(progressPercent.coerceIn(0, 100) / 100f)
+                    .height(PhevoTvDimensions.ProgressBarHeight)
+                    .clip(RoundedCornerShape(PhevoTvDimensions.ProgressBarRadius))
+                    .background(PhevoTvColors.ProgressFill),
+            )
         }
     }
 }
@@ -168,16 +228,39 @@ fun EpisodeCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val color = if (selected) PhevoTvColors.BrandPrimary else PhevoTvColors.SurfaceElevated
+    var focused by remember { mutableStateOf(false) }
+    val backgroundColor = when {
+        selected && focused -> PhevoTvColors.BrandFocused
+        selected -> PhevoTvColors.BrandPrimary
+        focused -> PhevoTvColors.SurfaceElevated
+        else -> PhevoTvColors.SurfaceSecondary
+    }
+    val borderColor = when {
+        focused -> PhevoTvColors.FocusOutline
+        selected -> PhevoTvColors.BrandPrimary
+        else -> PhevoTvColors.BorderSubtle
+    }
     Box(
         modifier = modifier
-            .height(56.dp)
-            .phevoFocusedSurface()
-            .background(color, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
+            .widthIn(min = PhevoTvDimensions.EpisodeCardMinWidth)
+            .height(PhevoTvDimensions.EpisodeCardHeight)
+            .clip(PhevoTvShapes.Button)
+            .background(backgroundColor, PhevoTvShapes.Button)
+            .border(
+                width = if (focused || selected) PhevoTvDimensions.FocusOutlineWidth else 1.dp,
+                color = borderColor,
+                shape = PhevoTvShapes.Button,
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(onClick = onClick)
+            .padding(horizontal = PhevoTvDimensions.SpaceMD),
         contentAlignment = Alignment.Center,
     ) {
-        Text(episode.name, style = MaterialTheme.typography.labelLarge, color = PhevoTvColors.TextPrimary)
+        Text(
+            episode.name,
+            style = PhevoTvTypography.LabelLarge,
+            color = if (selected || focused) PhevoTvColors.FocusText else PhevoTvColors.TextPrimary,
+        )
     }
 }
 
@@ -189,26 +272,87 @@ fun NavigationRailItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var focused by remember { mutableStateOf(false) }
+    val backgroundColor = when {
+        focused -> PhevoTvColors.SurfaceElevated
+        selected -> PhevoTvColors.SurfaceSecondary
+        else -> Color.Transparent
+    }
+    val borderColor = when {
+        focused -> PhevoTvColors.FocusOutline
+        else -> Color.Transparent
+    }
+    val textColor = when {
+        focused -> PhevoTvColors.FocusText
+        selected -> PhevoTvColors.TextPrimary
+        else -> PhevoTvColors.TextMuted
+    }
+    val iconColor = when {
+        focused -> PhevoTvColors.BrandFocused
+        selected -> PhevoTvColors.BrandPrimary
+        else -> PhevoTvColors.TextMuted
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .phevoFocusedSurface(clipShape = PhevoTvShapes.Button)
+            .clip(PhevoTvShapes.Button)
+            .background(backgroundColor, PhevoTvShapes.Button)
+            .border(
+                width = if (focused) PhevoTvDimensions.FocusOutlineWidth else 0.dp,
+                color = borderColor,
+                shape = PhevoTvShapes.Button,
+            )
+            .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick)
-            .background(if (selected) PhevoTvColors.SurfaceElevated else Color.Transparent, PhevoTvShapes.Button)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 10.dp, horizontal = PhevoTvDimensions.SpaceSM),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(iconText, style = MaterialTheme.typography.titleLarge, color = if (selected) PhevoTvColors.BrandFocused else PhevoTvColors.TextSecondary)
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) PhevoTvColors.TextPrimary else PhevoTvColors.TextSecondary, maxLines = 1)
+        Text(
+            iconText,
+            style = PhevoTvTypography.TitleMedium,
+            color = iconColor,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label,
+            style = PhevoTvTypography.Metadata,
+            color = textColor,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
+        // Active indicator bar for selected state
+        if (selected) {
+            Spacer(Modifier.height(4.dp))
+            Box(
+                Modifier
+                    .width(24.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(PhevoTvColors.BrandPrimary),
+            )
+        }
     }
 }
 
 @Composable
 fun TvLoadingState(modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        CircularProgressIndicator(color = PhevoTvColors.BrandPrimary)
-        Spacer(Modifier.height(16.dp))
-        Text("Đang tải nội dung mẫu…", style = MaterialTheme.typography.bodyLarge, color = PhevoTvColors.TextSecondary)
+    Column(
+        modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        CircularProgressIndicator(
+            color = PhevoTvColors.BrandPrimary,
+            trackColor = PhevoTvColors.SurfaceElevated,
+            strokeWidth = 3.dp,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceLG))
+        Text(
+            "Đang tải nội dung mẫu…",
+            style = PhevoTvTypography.BodyMedium,
+            color = PhevoTvColors.TextMuted,
+        )
     }
 }
 
@@ -221,12 +365,31 @@ fun TvEmptyState(
     actionModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(8.dp))
-        Text(description, style = MaterialTheme.typography.bodyLarge, color = PhevoTvColors.TextSecondary)
+    Column(
+        modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            "📭",
+            style = PhevoTvTypography.DisplayLarge,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
+        Text(
+            title,
+            style = PhevoTvTypography.TitleLarge,
+            color = PhevoTvColors.TextPrimary,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
+        Text(
+            description,
+            style = PhevoTvTypography.BodyMedium,
+            color = PhevoTvColors.TextSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 400.dp),
+        )
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(PhevoTvDimensions.SpaceXL))
             PhevoTvButton(actionLabel, onAction, modifier = actionModifier)
         }
     }
@@ -238,11 +401,29 @@ fun TvErrorState(
     modifier: Modifier = Modifier,
     initialFocusRequester: FocusRequester? = null,
 ) {
-    Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("Không thể tải nội dung", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(8.dp))
-        Text("Đây là trạng thái lỗi mẫu của TV-1.", style = MaterialTheme.typography.bodyLarge, color = PhevoTvColors.TextSecondary)
-        Spacer(Modifier.height(24.dp))
+    Column(
+        modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            "⚠",
+            style = PhevoTvTypography.DisplayLarge,
+            color = PhevoTvColors.Error,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
+        Text(
+            "Không thể tải nội dung",
+            style = PhevoTvTypography.TitleLarge,
+            color = PhevoTvColors.TextPrimary,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
+        Text(
+            "Đây là trạng thái lỗi mẫu của TV-1.",
+            style = PhevoTvTypography.BodyMedium,
+            color = PhevoTvColors.TextSecondary,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceXL))
         PhevoTvButton(
             "Thử lại",
             onRetry,
@@ -262,14 +443,44 @@ fun FakeArtwork(token: String?, title: String, modifier: Modifier = Modifier) {
         "home", "home-wide" -> Color(0xFF5B3035)
         else -> PhevoTvColors.SurfaceElevated
     }
-    Box(modifier.background(color, PhevoTvShapes.Card), contentAlignment = Alignment.Center) {
-        Text(
-            text = if (token == null) "PHEVO\n${title.take(18)}" else title,
-            style = MaterialTheme.typography.titleMedium,
-            color = PhevoTvColors.TextPrimary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(16.dp),
+    Box(
+        modifier
+            .background(color, PhevoTvShapes.Card)
+            .clip(PhevoTvShapes.Card),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Subtle bottom gradient for depth
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color(0x40000000)),
+                        startY = 0f,
+                    ),
+                ),
         )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(PhevoTvDimensions.SpaceMD),
+        ) {
+            if (token == null) {
+                Text(
+                    "PHEVO",
+                    style = PhevoTvTypography.Metadata,
+                    color = PhevoTvColors.BrandPrimary,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(PhevoTvDimensions.SpaceXS))
+            }
+            Text(
+                text = title.take(24),
+                style = PhevoTvTypography.TitleMedium,
+                color = PhevoTvColors.TextPrimary.copy(alpha = 0.9f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

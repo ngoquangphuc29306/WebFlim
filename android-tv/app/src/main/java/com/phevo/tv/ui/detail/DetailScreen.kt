@@ -26,11 +26,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phevo.tv.app.theme.PhevoTvColors
+import com.phevo.tv.app.theme.PhevoTvDimensions
+import com.phevo.tv.app.theme.PhevoTvShapes
+import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.domain.model.MovieDetail
 import com.phevo.tv.ui.common.EpisodeCard
 import com.phevo.tv.ui.common.FakeArtwork
@@ -83,82 +88,205 @@ private fun DetailContent(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().focusGroup(),
-        contentPadding = PaddingValues(vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceLG),
     ) {
+        // Cinematic backdrop with directional scrim
         item {
-            Box(Modifier.fillMaxWidth().height(260.dp).background(PhevoTvColors.SurfacePrimary)) {
-                FakeArtwork(detail.movie.backdropToken, detail.movie.title, Modifier.fillMaxSize())
-                Box(Modifier.fillMaxSize().background(PhevoTvColors.ScrimMedium))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(PhevoTvDimensions.DetailBackdropHeight),
+            ) {
+                FakeArtwork(
+                    detail.movie.backdropToken,
+                    detail.movie.title,
+                    Modifier.fillMaxSize(),
+                )
+                // Bottom-to-top scrim for text legibility
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    PhevoTvColors.ScrimLight,
+                                    PhevoTvColors.ScrimStrong,
+                                ),
+                            ),
+                        ),
+                )
             }
         }
+
+        // Poster + metadata + CTAs
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
-                FakeArtwork(detail.movie.posterToken, detail.movie.title, Modifier.width(160.dp).height(240.dp))
+            Row(
+                modifier = Modifier.padding(horizontal = PhevoTvDimensions.SafeAreaHorizontal),
+                horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceLG),
+                verticalAlignment = Alignment.Top,
+            ) {
+                FakeArtwork(
+                    detail.movie.posterToken,
+                    detail.movie.title,
+                    Modifier
+                        .width(PhevoTvDimensions.DetailPosterWidth)
+                        .height(PhevoTvDimensions.DetailPosterHeight)
+                        .clip(PhevoTvShapes.Card),
+                )
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(detail.movie.title, style = MaterialTheme.typography.displayMedium, maxLines = 2)
-                    Spacer(Modifier.height(8.dp))
                     Text(
-                        "${detail.movie.year} • ${detail.movie.type.name.lowercase()}${detail.movie.quality?.let { " • $it" } ?: ""}",
-                        style = MaterialTheme.typography.labelMedium,
+                        detail.movie.title,
+                        style = PhevoTvTypography.DisplayMedium,
+                        color = PhevoTvColors.TextPrimary,
+                        maxLines = 2,
+                    )
+                    Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
+                    Text(
+                        buildString {
+                            append(detail.movie.year)
+                            append(" • ")
+                            append(detail.movie.type.name.lowercase().replaceFirstChar { it.uppercase() })
+                            detail.movie.quality?.let { append(" • $it") }
+                            detail.movie.rating?.let { append(" • ★ $it") }
+                        },
+                        style = PhevoTvTypography.Metadata,
                         color = PhevoTvColors.TextSecondary,
                     )
-                    Spacer(Modifier.height(16.dp))
-                    Text(detail.synopsis, style = MaterialTheme.typography.bodyLarge, color = PhevoTvColors.TextSecondary, maxLines = 4)
-                    Spacer(Modifier.height(20.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PhevoTvButton("Xem ngay", onPlay, modifier = Modifier.focusRequester(contentFocusRequester))
-                        PhevoTvButton("Yêu thích", { onToggleWatchlist(detail.movie.movieSlug) }, primary = false)
-                    }
-                }
-            }
-        }
-        item {
-            Text("Thể loại: ${detail.genres.joinToString(" • ")}", style = MaterialTheme.typography.bodyMedium, color = PhevoTvColors.TextSecondary)
-            Text("Quốc gia: ${detail.countries.joinToString(" • ")}", style = MaterialTheme.typography.bodyMedium, color = PhevoTvColors.TextSecondary)
-        }
-        if (detail.servers.isNotEmpty()) {
-            item {
-                Text("Nguồn phát", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    detail.servers.forEachIndexed { index, currentServer ->
+                    Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
+                    Text(
+                        detail.synopsis,
+                        style = PhevoTvTypography.BodyLarge,
+                        color = PhevoTvColors.TextSecondary,
+                        maxLines = 4,
+                    )
+                    Spacer(Modifier.height(PhevoTvDimensions.SpaceLG))
+                    Row(horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceMD)) {
                         PhevoTvButton(
-                            label = currentServer.serverName,
-                            onClick = { selectedServer = index },
-                            primary = selectedServer == index,
+                            "▶  Xem ngay",
+                            onPlay,
+                            modifier = Modifier.focusRequester(contentFocusRequester),
+                        )
+                        PhevoTvButton(
+                            "♡  Yêu thích",
+                            { onToggleWatchlist(detail.movie.movieSlug) },
+                            primary = false,
                         )
                     }
                 }
             }
+        }
+
+        // Genre + Country metadata
+        item {
+            Column(
+                modifier = Modifier.padding(horizontal = PhevoTvDimensions.SafeAreaHorizontal),
+                verticalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceSM),
+            ) {
+                if (detail.genres.isNotEmpty()) {
+                    Text(
+                        "Thể loại: ${detail.genres.joinToString(" • ")}",
+                        style = PhevoTvTypography.BodyMedium,
+                        color = PhevoTvColors.TextMuted,
+                    )
+                }
+                if (detail.countries.isNotEmpty()) {
+                    Text(
+                        "Quốc gia: ${detail.countries.joinToString(" • ")}",
+                        style = PhevoTvTypography.BodyMedium,
+                        color = PhevoTvColors.TextMuted,
+                    )
+                }
+                if (detail.directors.isNotEmpty()) {
+                    Text(
+                        "Đạo diễn: ${detail.directors.joinToString(", ")}",
+                        style = PhevoTvTypography.BodyMedium,
+                        color = PhevoTvColors.TextMuted,
+                    )
+                }
+                if (detail.actors.isNotEmpty()) {
+                    Text(
+                        "Diễn viên: ${detail.actors.joinToString(", ")}",
+                        style = PhevoTvTypography.BodyMedium,
+                        color = PhevoTvColors.TextMuted,
+                    )
+                }
+            }
+        }
+
+        // Server selector
+        if (detail.servers.isNotEmpty()) {
             item {
-                Text("Danh sách tập", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().focusGroup(),
-                    contentPadding = PaddingValues(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(server?.episodes.orEmpty(), key = { it.episodeSlug }) { episode ->
-                        EpisodeCard(episode, selected = episode == server?.episodes?.firstOrNull(), onClick = {})
+                Column(modifier = Modifier.padding(horizontal = PhevoTvDimensions.SafeAreaHorizontal)) {
+                    Text(
+                        "Nguồn phát",
+                        style = PhevoTvTypography.TitleLarge,
+                        color = PhevoTvColors.TextPrimary,
+                    )
+                    Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
+                    Row(horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceMD)) {
+                        detail.servers.forEachIndexed { index, currentServer ->
+                            PhevoTvButton(
+                                label = currentServer.serverName,
+                                onClick = { selectedServer = index },
+                                primary = selectedServer == index,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Episode list
+            item {
+                Column(modifier = Modifier.padding(start = PhevoTvDimensions.SafeAreaHorizontal)) {
+                    Text(
+                        "Danh sách tập",
+                        style = PhevoTvTypography.TitleLarge,
+                        color = PhevoTvColors.TextPrimary,
+                    )
+                    Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().focusGroup(),
+                        contentPadding = PaddingValues(end = PhevoTvDimensions.SafeAreaHorizontal),
+                        horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceSM),
+                    ) {
+                        items(server?.episodes.orEmpty(), key = { it.episodeSlug }) { episode ->
+                            EpisodeCard(
+                                episode,
+                                selected = episode == server?.episodes?.firstOrNull(),
+                                onClick = {},
+                            )
+                        }
                     }
                 }
             }
         }
+
+        // Related movies
         if (relatedMovies.isNotEmpty()) {
             item {
-                Text("Có thể bạn sẽ thích", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().focusGroup(),
-                    contentPadding = PaddingValues(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(relatedMovies, key = { it.movieSlug }) { movie ->
-                        PosterMovieCard(movie, onClick = { onOpenRelated(movie.movieSlug) })
+                Column(modifier = Modifier.padding(start = PhevoTvDimensions.SafeAreaHorizontal)) {
+                    Text(
+                        "Có thể bạn sẽ thích",
+                        style = PhevoTvTypography.TitleLarge,
+                        color = PhevoTvColors.TextPrimary,
+                    )
+                    Spacer(Modifier.height(PhevoTvDimensions.RowTitleBottomSpacing))
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().focusGroup(),
+                        contentPadding = PaddingValues(end = PhevoTvDimensions.SafeAreaHorizontal),
+                        horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.CardGap),
+                    ) {
+                        items(relatedMovies, key = { it.movieSlug }) { movie ->
+                            PosterMovieCard(movie, onClick = { onOpenRelated(movie.movieSlug) })
+                        }
                     }
                 }
             }
+        }
+
+        // Bottom safe area
+        item {
+            Spacer(Modifier.height(PhevoTvDimensions.Space2XL))
         }
     }
 }

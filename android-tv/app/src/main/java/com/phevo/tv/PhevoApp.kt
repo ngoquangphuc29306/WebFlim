@@ -3,10 +3,14 @@ package com.phevo.tv
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +33,7 @@ import com.phevo.tv.app.navigation.PhevoDestination
 import com.phevo.tv.app.navigation.PhevoViewModelFactory
 import com.phevo.tv.app.theme.PhevoTvColors
 import com.phevo.tv.app.theme.PhevoTvDimensions
+import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.data.fake.FakeMovieRepository
 import com.phevo.tv.domain.repository.PhevoTvRepository
 import com.phevo.tv.ui.account.AccountScreen
@@ -86,25 +91,28 @@ fun PhevoApp(repository: PhevoTvRepository = remember { FakeMovieRepository() })
             .fillMaxSize()
             .background(PhevoTvColors.AppBackground),
     ) {
-        PhevoNavigationRail(
-            current = destination,
-            onDestinationSelected = { selected ->
-                previousDestination = destination.takeUnless {
-                    it == PhevoDestination.PLAYER || it == PhevoDestination.DETAIL
-                } ?: PhevoDestination.HOME
-                destination = selected
-            },
-            railFocusRequester = railFocusRequester,
-            contentFocusRequester = contentFocusRequester,
-        )
+        // Show rail only for top-level destinations (not detail/player)
+        val showRail = destination != PhevoDestination.PLAYER
+        if (showRail) {
+            PhevoNavigationRail(
+                current = destination,
+                onDestinationSelected = { selected ->
+                    previousDestination = destination.takeUnless {
+                        it == PhevoDestination.PLAYER || it == PhevoDestination.DETAIL
+                    } ?: PhevoDestination.HOME
+                    destination = selected
+                },
+                railFocusRequester = railFocusRequester,
+                contentFocusRequester = contentFocusRequester,
+            )
+        }
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
                 .focusGroup()
-                .focusProperties { left = railFocusRequester }
-                .padding(horizontal = PhevoTvDimensions.ScreenPadding),
+                .focusProperties { left = railFocusRequester },
         ) {
             when (destination) {
                 PhevoDestination.HOME -> HomeScreen(
@@ -178,22 +186,34 @@ private fun PhevoNavigationRail(
         modifier = Modifier
             .width(PhevoTvDimensions.NavigationRailWidth)
             .fillMaxHeight()
-            .background(PhevoTvColors.SurfacePrimary)
-            .padding(vertical = PhevoTvDimensions.SpaceLG)
+            .background(PhevoTvColors.RailBackground)
+            .padding(vertical = PhevoTvDimensions.SpaceLG, horizontal = PhevoTvDimensions.SpaceSM)
             .focusRequester(railFocusRequester)
             .focusProperties { right = contentFocusRequester },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
     ) {
-        Text("PHEVO", style = MaterialTheme.typography.titleLarge, color = PhevoTvColors.TextPrimary)
-        railDestinations.forEach { item ->
-            NavigationRailItem(
-                label = item.label,
-                iconText = item.iconText,
-                selected = current == item,
-                onClick = { onDestinationSelected(item) },
-                modifier = Modifier.focusProperties { right = contentFocusRequester },
-            )
+        // Brand header
+        Text(
+            "P",
+            style = PhevoTvTypography.DisplayMedium,
+            color = PhevoTvColors.BrandPrimary,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceXL))
+
+        // Navigation items
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceXS),
+        ) {
+            railDestinations.forEach { item ->
+                NavigationRailItem(
+                    label = item.label,
+                    iconText = item.iconText,
+                    selected = current == item,
+                    onClick = { onDestinationSelected(item) },
+                    modifier = Modifier.focusProperties { right = contentFocusRequester },
+                )
+            }
         }
     }
 }

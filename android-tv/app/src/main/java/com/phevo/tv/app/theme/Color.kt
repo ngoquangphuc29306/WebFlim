@@ -22,4 +22,16 @@ object PhevoTvColors {
     val FocusText = Color.White
     val ScrimStrong = Color(0xE0080808)
     val ScrimMedium = Color(0x9E080808)
+    val ScrimLight = Color(0x47080808)
+
+    // Directional hero scrim — text side stronger, artwork side lighter
+    val ScrimHeroStart = Color(0xF0080808)
+    val ScrimHeroEnd = Color(0x00080808)
+
+    // Continue Watching progress bar
+    val ProgressTrack = Color(0xFF262626)
+    val ProgressFill = Color(0xFFE50914)
+
+    // Rail
+    val RailBackground = Color(0xFF0C0C0C)
 }

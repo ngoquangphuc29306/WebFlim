@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,9 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phevo.tv.app.theme.PhevoTvColors
+import com.phevo.tv.app.theme.PhevoTvDimensions
+import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.domain.model.Movie
 import com.phevo.tv.ui.common.ContinueWatchingCard
 import com.phevo.tv.ui.common.FakeArtwork
@@ -71,8 +76,7 @@ private fun HomeContent(
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(32.dp),
+        verticalArrangement = Arrangement.spacedBy(PhevoTvDimensions.RowGap),
     ) {
         item {
             HomeHero(
@@ -102,6 +106,10 @@ private fun HomeContent(
         item {
             TvMovieRow("Đề xuất", value.featuredMovies, onOpenMovie, onRememberFocus = onRememberFocus)
         }
+        // Bottom safe area
+        item {
+            Spacer(Modifier.height(PhevoTvDimensions.Space2XL))
+        }
     }
 }
 
@@ -115,33 +123,117 @@ private fun HomeHero(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(340.dp)
-            .background(PhevoTvColors.SurfacePrimary),
+            .height(PhevoTvDimensions.HeroHeight),
     ) {
-        FakeArtwork(movie.backdropToken, movie.title, Modifier.fillMaxSize())
-        Box(Modifier.fillMaxSize().background(PhevoTvColors.ScrimMedium))
+        // Full-bleed backdrop artwork
+        FakeArtwork(
+            movie.backdropToken,
+            movie.title,
+            Modifier.fillMaxSize(),
+        )
+
+        // Directional scrim: strong on left for text, fading to transparent on right
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            PhevoTvColors.ScrimHeroStart,
+                            PhevoTvColors.ScrimMedium,
+                            PhevoTvColors.ScrimHeroEnd,
+                        ),
+                        startX = 0f,
+                        endX = Float.POSITIVE_INFINITY,
+                    ),
+                ),
+        )
+
+        // Bottom fade for seamless row transition
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            PhevoTvColors.ScrimHeroEnd,
+                            PhevoTvColors.AppBackground,
+                        ),
+                    ),
+                ),
+        )
+
+        // Hero content
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(32.dp)
-                .fillMaxWidth(0.62f),
+                .padding(
+                    start = PhevoTvDimensions.SafeAreaHorizontal,
+                    end = PhevoTvDimensions.SpaceXL,
+                    bottom = PhevoTvDimensions.Space3XL,
+                )
+                .fillMaxWidth(0.55f),
         ) {
-            Text(movie.quality ?: "PHEVO TV", style = MaterialTheme.typography.labelLarge, color = PhevoTvColors.BrandFocused)
-            Spacer(Modifier.height(8.dp))
-            Text(movie.title, style = MaterialTheme.typography.displayMedium, maxLines = 2)
-            Spacer(Modifier.height(8.dp))
-            Text("${movie.year} • ${movie.type.name.lowercase()}", style = MaterialTheme.typography.labelMedium, color = PhevoTvColors.TextSecondary)
-            Spacer(Modifier.height(12.dp))
+            // Quality badge
+            movie.quality?.let { quality ->
+                Text(
+                    quality,
+                    style = PhevoTvTypography.Metadata,
+                    color = PhevoTvColors.BrandFocused,
+                )
+                Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
+            }
+
+            // Title — hero uses DisplayLarge per design system
+            Text(
+                movie.title,
+                style = PhevoTvTypography.DisplayLarge,
+                color = PhevoTvColors.TextPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
+
+            // Metadata line
+            Text(
+                buildString {
+                    append(movie.year)
+                    append(" • ")
+                    append(movie.type.name.lowercase().replaceFirstChar { it.uppercase() })
+                    movie.rating?.let { append(" • ★ $it") }
+                },
+                style = PhevoTvTypography.Metadata,
+                color = PhevoTvColors.TextSecondary,
+            )
+
+            Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
+
+            // Synopsis
             Text(
                 "Khám phá câu chuyện mới trong không gian xem phim tập trung cho Android TV.",
-                style = MaterialTheme.typography.bodyLarge,
+                style = PhevoTvTypography.BodyLarge,
                 color = PhevoTvColors.TextSecondary,
                 maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PhevoTvButton("Xem ngay", onPlay, modifier = Modifier.focusRequester(contentFocusRequester))
-                PhevoTvButton("Chi tiết", onDetail, primary = false)
+
+            Spacer(Modifier.height(PhevoTvDimensions.SpaceLG))
+
+            // CTAs
+            Row(horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceMD)) {
+                PhevoTvButton(
+                    "▶  Xem ngay",
+                    onPlay,
+                    modifier = Modifier.focusRequester(contentFocusRequester),
+                )
+                PhevoTvButton(
+                    "Chi tiết",
+                    onDetail,
+                    primary = false,
+                )
             }
         }
     }
@@ -157,15 +249,21 @@ private fun TvMovieRow(
 ) {
     if (movies.isEmpty()) return
     Column {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(12.dp))
+        // Row title aligned with content safe area
+        Text(
+            title,
+            style = PhevoTvTypography.TitleLarge,
+            color = PhevoTvColors.TextPrimary,
+            modifier = Modifier.padding(start = PhevoTvDimensions.SafeAreaHorizontal),
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.RowTitleBottomSpacing))
         LazyRow(
             state = rememberLazyListState(),
             modifier = Modifier
                 .fillMaxWidth()
                 .focusGroup(),
-            contentPadding = PaddingValues(horizontal = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = PhevoTvDimensions.SafeAreaHorizontal - PhevoTvDimensions.FocusClipPadding),
+            horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.CardGap),
         ) {
             itemsIndexed(movies, key = { _, movie -> movie.movieSlug }) { index, movie ->
                 if (continueWatching) {
