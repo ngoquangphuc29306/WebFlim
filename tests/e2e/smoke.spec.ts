@@ -10,7 +10,11 @@ test('home exposes the PHEVO shell and primary navigation', async ({ page }) => 
 
 test('home navigation reaches discovery', async ({ page }) => {
   await page.goto('/');
-  await page.locator('a[href="/kham-pha"]').first().click();
+  const discoveryLink = page.locator('a[href="/kham-pha"]').first();
+
+  await expect(discoveryLink).toBeVisible();
+  await expect(discoveryLink).toBeEnabled();
+  await discoveryLink.click();
 
   await expect(page).toHaveURL(/\/kham-pha(?:\?.*)?$/);
   await expect(page.getByRole('link', { name: 'Trang chủ PHEVO' })).toBeVisible();
@@ -21,6 +25,7 @@ test('search entry point can navigate to the search route', async ({ page }) => 
   const searchInput = page.locator('input[aria-label="Tìm kiếm phim"]').first();
 
   await expect(searchInput).toBeVisible();
+  await expect(searchInput).toBeEnabled();
   await searchInput.fill('qa-smoke');
   await searchInput.press('Enter');
 

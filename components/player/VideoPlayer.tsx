@@ -36,10 +36,15 @@ import {
   savePlayerPreferences,
   PlayerPreferences,
 } from '@/lib/utils/player-preferences';
+import {
+  useHlsPlayer,
+  MAX_MEDIA_RECOVERY_ATTEMPTS,
+  MAX_NETWORK_RECOVERY_ATTEMPTS,
+} from './hooks/useHlsPlayer';
+import type { PlayerMode } from './hooks/useHlsPlayer';
+import { getPlayerSourceKey, isEditableKeyboardTarget } from './player-logic';
 
-function setVideoSource(el: HTMLVideoElement, url: string) {
-  el.src = url;
-}
+export type { PlayerMode } from './hooks/useHlsPlayer';
 
 function setVideoProperties(el: HTMLVideoElement, volume: number, muted: boolean, rate: number) {
   el.volume = volume;
@@ -74,11 +79,7 @@ interface VideoPlayerProps {
   nextEpisodeName?: string;
 }
 
-export type PlayerMode = 'native-hls' | 'hls-js' | 'embed' | 'unavailable';
-
 const ALLOWED_PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
-const MAX_NETWORK_RECOVERY_ATTEMPTS = 2;
-const MAX_MEDIA_RECOVERY_ATTEMPTS = 2;
 
 function VideoPlayerInner({
   embedUrl,
@@ -310,128 +311,21 @@ function VideoPlayerInner({
     }
   }, [movieSlug, movieTitle, posterUrl, episodeName, episodeSlug, serverName, serverIndex, embedUrl, m3u8Url]);
 
-  // HLS stream setup & HLS.js cross-browser integration with lazy dynamic import & race guards
-  useEffect(() => {
-    let isCancelled = false;
-    const currentGen = ++sourceGenerationRef.current;
-
-    // Reset recovery counters on new source setup
-    networkRecoveryCountRef.current = 0;
-    mediaRecoveryCountRef.current = 0;
-    fallbackTriggeredRef.current = false;
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-
-    // Clear previous HLS instance
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-
-    if (!useDirectStream || !m3u8Url) {
-      queueMicrotask(() => {
-        if (!isCancelled && sourceGenerationRef.current === currentGen) {
-          setPlayerMode(embedUrl ? 'embed' : 'unavailable');
-        }
-      });
-      return;
-    }
-
-    const video = videoRef.current;
-    if (!video) return;
-
-    // Check Native HLS support (Safari, Mobile Safari, iOS)
-    const canNative = video.canPlayType('application/vnd.apple.mpegurl') !== '';
-
-    if (canNative) {
-      queueMicrotask(() => {
-        if (!isCancelled && sourceGenerationRef.current === currentGen) {
-          setPlayerMode('native-hls');
-        }
-      });
-      setVideoSource(video, m3u8Url);
-    } else {
-      // Direct HLS stream requires hls.js on non-native browsers -> Dynamically import hls.js
-      import('hls.js')
-        .then(({ default: HlsClass }) => {
-          if (isCancelled || sourceGenerationRef.current !== currentGen) {
-            return;
-          }
-
-          if (!HlsClass.isSupported()) {
-            fallbackToEmbed('HLS not supported in this browser environment');
-            return;
-          }
-
-          const currentVideo = videoRef.current;
-          if (!currentVideo) return;
-
-          queueMicrotask(() => {
-            if (!isCancelled && sourceGenerationRef.current === currentGen) {
-              setPlayerMode('hls-js');
-            }
-          });
-
-          const hls = new HlsClass({
-            enableWorker: true,
-            lowLatencyMode: false,
-          });
-          hlsRef.current = hls;
-
-          hls.loadSource(m3u8Url);
-          hls.attachMedia(currentVideo);
-
-          hls.on(HlsClass.Events.ERROR, (_event, data) => {
-            if (isCancelled || sourceGenerationRef.current !== currentGen) return;
-            if (data.fatal) {
-              console.warn('HLS.js fatal error encountered:', data.type, data.details);
-              switch (data.type) {
-                case HlsClass.ErrorTypes.NETWORK_ERROR:
-                  if (networkRecoveryCountRef.current < MAX_NETWORK_RECOVERY_ATTEMPTS) {
-                    networkRecoveryCountRef.current += 1;
-                    console.info(
-                      `HLS.js network recovery attempt ${networkRecoveryCountRef.current}/${MAX_NETWORK_RECOVERY_ATTEMPTS}`
-                    );
-                    hls.startLoad();
-                  } else {
-                    fallbackToEmbed('Exhausted network recovery retries');
-                  }
-                  break;
-                case HlsClass.ErrorTypes.MEDIA_ERROR:
-                  if (mediaRecoveryCountRef.current < MAX_MEDIA_RECOVERY_ATTEMPTS) {
-                    mediaRecoveryCountRef.current += 1;
-                    console.info(
-                      `HLS.js media recovery attempt ${mediaRecoveryCountRef.current}/${MAX_MEDIA_RECOVERY_ATTEMPTS}`
-                    );
-                    hls.recoverMediaError();
-                  } else {
-                    fallbackToEmbed('Exhausted media recovery retries');
-                  }
-                  break;
-                default:
-                  fallbackToEmbed('Unrecoverable HLS error');
-                  break;
-              }
-            }
-          });
-        })
-        .catch((err) => {
-          if (isCancelled || sourceGenerationRef.current !== currentGen) return;
-          console.error('Failed to dynamically load hls.js engine:', err);
-          fallbackToEmbed('Failed to initialize HLS engine');
-        });
-    }
-
-    return () => {
-      isCancelled = true;
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, [useDirectStream, m3u8Url, embedUrl, fallbackToEmbed]);
+  // HLS lifecycle, recovery, cleanup, and source-generation guards.
+  useHlsPlayer({
+    useDirectStream,
+    m3u8Url,
+    embedUrl,
+    videoRef,
+    hlsRef,
+    sourceGenerationRef,
+    networkRecoveryCountRef,
+    mediaRecoveryCountRef,
+    fallbackTriggeredRef,
+    countdownTimerRef,
+    setPlayerMode,
+    fallbackToEmbed,
+  });
 
   // Helper to save current video progress
   const saveCurrentVideoProgress = (force: boolean = false, isEnded: boolean = false) => {
@@ -581,14 +475,7 @@ function VideoPlayerInner({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT' ||
-          target.isContentEditable)
-      ) {
+      if (isEditableKeyboardTarget(e.target)) {
         return;
       }
 
@@ -1102,6 +989,6 @@ function VideoPlayerInner({
 }
 
 export default function VideoPlayer(props: VideoPlayerProps) {
-  const sourceKey = `${props.movieSlug}:${props.episodeSlug}:${props.serverIndex ?? 0}:${props.m3u8Url ?? props.embedUrl}`;
+  const sourceKey = getPlayerSourceKey(props);
   return <VideoPlayerInner key={sourceKey} {...props} />;
 }
