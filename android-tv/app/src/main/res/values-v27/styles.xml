@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.PhevoTv" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:colorAccent">#E50914</item>
+        <item name="android:navigationBarColor">#080808</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
