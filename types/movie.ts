@@ -113,6 +113,7 @@ export interface VSMovDetailResponse {
 // Error models for API consumption
 export type VSMovApiErrorType =
   | 'NETWORK_ERROR'
+  | 'TIMEOUT'
   | 'HTTP_ERROR'
   | 'NOT_FOUND'
   | 'INVALID_RESPONSE'
@@ -122,6 +123,8 @@ export interface VSMovApiError {
   type: VSMovApiErrorType;
   message: string;
   statusCode?: number;
+  url?: string;
+  cause?: string;
 }
 
 export interface VSMovApiResult<T> {
