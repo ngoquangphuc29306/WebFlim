@@ -67,7 +67,7 @@ function LoginContent() {
             className="inline-flex items-center gap-2 text-2xl font-extrabold tracking-tight text-white hover:opacity-90 transition-opacity mb-3"
           >
             <Film className="w-7 h-7 text-[#e50914]" />
-            <span>VS<span className="text-[#e50914]">MOV</span></span>
+            <span>PHE<span className="text-[#e50914]">VO</span></span>
           </Link>
           <p className="text-sm text-neutral-400 mt-1 leading-relaxed">
             Đăng nhập để đồng bộ danh sách yêu thích, lịch sử xem và tiến trình phát phim giữa tất cả các thiết bị.
@@ -139,7 +139,7 @@ function LoginContent() {
         <div className="mt-8 pt-6 border-t border-white/5 space-y-2 text-xs text-neutral-400">
           <div className="flex items-center gap-2 text-neutral-300">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Bảo mật 100% dữ liệu cá nhân</span>
+            <span>Đăng nhập để đồng bộ dữ liệu cá nhân</span>
           </div>
           <p className="text-neutral-500 text-[11px] leading-relaxed">
             PHEVO chỉ sử dụng tài khoản Google để xác thực và đồng bộ dữ liệu xem phim cá nhân. Bạn vẫn có thể xem phim hoàn toàn miễn phí mà không cần tạo tài khoản.

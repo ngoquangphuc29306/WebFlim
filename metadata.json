@@ -1,6 +1,6 @@
 {
   "name": "PHEVO Stream",
-  "description": "A modern, cinematic movie streaming platform powered by PHEVO API.",
+  "description": "A modern movie streaming platform with a focused viewing experience.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

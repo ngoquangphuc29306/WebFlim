@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getSiteUrl } from '@/lib/site-config';
 
 interface PaginationProps {
   currentPage: number;
@@ -23,7 +24,7 @@ export default function Pagination({
     const hasQuery = baseUrl.includes('?');
     if (hasQuery) {
       // replace or append page param
-      const url = new URL(baseUrl, 'https://vsmov.com');
+      const url = new URL(baseUrl, getSiteUrl());
       url.searchParams.set(paramName, String(page));
       return `${url.pathname}${url.search}`;
     }

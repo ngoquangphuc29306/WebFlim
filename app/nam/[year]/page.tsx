@@ -13,8 +13,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { year } = await params;
   return {
-    title: `Phim Phát Hành Năm ${year} HD Vietsub | PHEVO`,
-    description: `Xem danh sách phim ra mắt năm ${year} cập nhật mới nhất chất lượng cao.`,
+    title: `Phim Phát Hành Năm ${year} Vietsub | PHEVO`,
+    description: `Xem danh sách phim ra mắt năm ${year} được cập nhật trên PHEVO.`,
   };
 }
 

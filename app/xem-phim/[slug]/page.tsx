@@ -26,7 +26,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const epTitle = ep ? `Tập ${ep.replace('tap-', '')}` : '';
 
   return {
-    title: `Xem Phim ${movie.title} ${epTitle} HD Vietsub | PHEVO`,
+    title: `Xem Phim ${movie.title} ${epTitle} Vietsub | PHEVO`,
     description: `Xem phim ${movie.title} ${epTitle} vietsub thuyết minh tốc độ cao không giật lag trên PHEVO.`,
   };
 }

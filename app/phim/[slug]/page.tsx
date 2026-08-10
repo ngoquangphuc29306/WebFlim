@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: `${movie.title} ${movie.year ? `(${movie.year})` : ''} - Xem Phim HD Vietsub | PHEVO`,
-    description: movie.synopsis || `Xem phim ${movie.title} vietsub thuyết minh miễn phí chất lượng cao trên PHEVO.`,
+    title: `${movie.title} ${movie.year ? `(${movie.year})` : ''} - Xem Phim Vietsub | PHEVO`,
+    description: movie.synopsis || `Xem phim ${movie.title} vietsub thuyết minh trên PHEVO.`,
     openGraph: {
       title: movie.title,
       description: movie.synopsis,
