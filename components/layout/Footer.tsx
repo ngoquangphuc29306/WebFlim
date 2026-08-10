@@ -43,7 +43,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-xs leading-relaxed text-[#8c8c8c]">
-              Trải nghiệm xem phim trực tuyến đỉnh cao với giao diện hiện đại, tốc độ cực nhanh và chất lượng HD/4K sắc nét. Powered by PHEVO API.
+              Trải nghiệm xem phim trực tuyến với giao diện hiện đại và nội dung được cập nhật thường xuyên. Dữ liệu phim được lấy từ các nguồn API bên thứ ba.
             </p>
           </div>
 

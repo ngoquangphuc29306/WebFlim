@@ -16,8 +16,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const country = countries.find((c) => c.slug === slug);
 
   return {
-    title: `Phim Quốc Gia ${country ? country.name : slug} HD Vietsub | PHEVO`,
-    description: `Xem danh sách phim sản xuất tại ${country ? country.name : slug} cập nhật mới nhất với chất lượng HD/4K.`,
+    title: `Phim Quốc Gia ${country ? country.name : slug} Vietsub | PHEVO`,
+    description: `Xem danh sách phim sản xuất tại ${country ? country.name : slug} được cập nhật trên PHEVO.`,
   };
 }
 

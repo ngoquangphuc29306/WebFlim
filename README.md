@@ -1,4 +1,4 @@
-# VSMov Movie Website — Google AI Studio Prompt Pack
+# PHEVO Movie Website — VSMov Integration Prompt Pack
 
 Bộ prompt này được thiết kế để build một web phim hiện đại theo từng phase thay vì yêu cầu AI tạo toàn bộ project trong một lần.
 

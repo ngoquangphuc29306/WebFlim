@@ -16,6 +16,9 @@ import {
 import { normalizeMovie, normalizeMovieDetail } from './normalizers';
 
 const BASE_URL = 'https://vsmov.com/api';
+const DEFAULT_API_TIMEOUT_MS = 10_000;
+const MAX_API_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 50;
 
 const DEFAULT_PAGINATION: VSMovPagination = {
   totalItems: 0,
@@ -36,53 +39,127 @@ export const POPULAR_COUNTRIES_FALLBACK: CountryModel[] = [
   { id: 'an-do', name: 'Ấn Độ', slug: 'an-do' },
 ];
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isRetryableStatus(statusCode: number): boolean {
+  return statusCode === 500 || statusCode === 502 || statusCode === 503 || statusCode === 504;
+}
+
+function waitBeforeRetry(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+}
+
+function createTimeoutController(timeoutMs: number): {
+  controller: AbortController;
+  cleanup: () => void;
+} {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  return {
+    controller,
+    cleanup: () => clearTimeout(timer),
+  };
+}
+
+function logApiError(error: VSMovApiError): void {
+  console.error('[VSMov API Error]', error.message);
+}
+
 /**
- * Reusable fetch helper with error handling & caching
+ * Reusable fetch helper with bounded timeout/retry, error handling, and caching.
  */
 async function fetchJson<T>(
   url: string,
   revalidateSec = 300
 ): Promise<VSMovApiResult<T>> {
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: revalidateSec },
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) VSMovApp/1.0',
-        Accept: 'application/json',
-      },
-    });
+  for (let attempt = 1; attempt <= MAX_API_ATTEMPTS; attempt++) {
+    const timeout = createTimeoutController(DEFAULT_API_TIMEOUT_MS);
+    let failure: VSMovApiResult<T> | null = null;
+    let shouldRetry = false;
 
-    if (!res.ok) {
+    try {
+      const res = await fetch(url, {
+        next: { revalidate: revalidateSec },
+        signal: timeout.controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) VSMovApp/1.0',
+          Accept: 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const error: VSMovApiError = {
+          type: res.status === 404 ? 'NOT_FOUND' : 'HTTP_ERROR',
+          message: `HTTP ${res.status} error requesting ${url}`,
+          statusCode: res.status,
+          url,
+        };
+        failure = { data: null, error };
+        shouldRetry = isRetryableStatus(res.status);
+      } else {
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.toLowerCase().includes('application/json')) {
+          const error: VSMovApiError = {
+            type: 'INVALID_RESPONSE',
+            message: `Expected JSON response but received ${contentType} for ${url}`,
+            url,
+          };
+          logApiError(error);
+          return { data: null, error };
+        }
+
+        try {
+          const json = (await res.json()) as T;
+          return { data: json, error: null };
+        } catch (err: unknown) {
+          const error: VSMovApiError = {
+            type: 'INVALID_RESPONSE',
+            message: `Invalid JSON response from ${url}: ${getErrorMessage(err)}`,
+            url,
+            cause: getErrorMessage(err),
+          };
+          logApiError(error);
+          return { data: null, error };
+        }
+      }
+    } catch (err: unknown) {
+      const timedOut = timeout.controller.signal.aborted;
+      const cause = getErrorMessage(err);
       const error: VSMovApiError = {
-        type: res.status === 404 ? 'NOT_FOUND' : 'HTTP_ERROR',
-        message: `HTTP ${res.status} error requesting ${url}`,
-        statusCode: res.status,
+        type: timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
+        message: timedOut
+          ? `Request timed out after ${DEFAULT_API_TIMEOUT_MS}ms requesting ${url}`
+          : `Network error fetching ${url}: ${cause}`,
+        url,
+        cause,
       };
-      console.error(`[VSMov API Error]`, error.message);
-      return { data: null, error };
+      failure = { data: null, error };
+      shouldRetry = true;
+    } finally {
+      timeout.cleanup();
     }
 
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const error: VSMovApiError = {
-        type: 'INVALID_RESPONSE',
-        message: `Expected JSON response but received ${contentType} for ${url}`,
-      };
-      console.error(`[VSMov API Error]`, error.message);
-      return { data: null, error };
+    if (failure && shouldRetry && attempt < MAX_API_ATTEMPTS) {
+      await waitBeforeRetry();
+      continue;
     }
 
-    const json = (await res.json()) as T;
-    return { data: json, error: null };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    const error: VSMovApiError = {
-      type: 'NETWORK_ERROR',
-      message: `Network error fetching ${url}: ${message}`,
-    };
-    console.error(`[VSMov API Exception]`, error.message);
-    return { data: null, error };
+    if (failure) {
+      logApiError(failure.error as VSMovApiError);
+      return failure;
+    }
   }
+
+  const error: VSMovApiError = {
+    type: 'NETWORK_ERROR',
+    message: `Request failed without a response for ${url}`,
+    url,
+  };
+  logApiError(error);
+  return { data: null, error };
 }
 
 /**
@@ -285,21 +362,13 @@ export const getMovieDetail = cache(
       if (slug === 'dao-hai-tac') candidateSlugs.push('one-piece');
 
       for (const candidate of candidateSlugs) {
-        try {
-          const fallbackRes = await fetch(`https://phimapi.com/phim/${candidate}`, {
-            next: { revalidate: 300 },
-          });
-          if (fallbackRes.ok) {
-            const fallbackData = (await fallbackRes.json()) as VSMovDetailResponse;
-            if (fallbackData && fallbackData.movie && fallbackData.episodes?.length) {
-              const normalized = normalizeMovieDetail(fallbackData);
-              if (normalized) {
-                return { movie: normalized, error: null };
-              }
-            }
+        const fallbackUrl = `https://phimapi.com/phim/${candidate}`;
+        const { data: fallbackData } = await fetchJson<VSMovDetailResponse>(fallbackUrl, 300);
+        if (fallbackData && fallbackData.movie && fallbackData.episodes?.length) {
+          const normalized = normalizeMovieDetail(fallbackData);
+          if (normalized) {
+            return { movie: normalized, error: null };
           }
-        } catch {
-          // Ignore fallback fetch error and continue
         }
       }
     }

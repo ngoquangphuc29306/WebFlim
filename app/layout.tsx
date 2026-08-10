@@ -6,11 +6,13 @@ import BottomNav from '@/components/layout/BottomNav';
 import ToastContainer from '@/components/ui/Toast';
 import { Providers } from '@/app/providers';
 import { getGenresList } from '@/lib/api/vsmov';
+import { getSiteUrl } from '@/lib/site-config';
 
 export const metadata: Metadata = {
-  title: 'PHEVO Stream - Trải Nghiệm Xem Phim Trực Tuyến Đỉnh Cao',
+  metadataBase: new URL(getSiteUrl()),
+  title: 'PHEVO Stream - Xem Phim Trực Tuyến',
   description:
-    'Website xem phim miễn phí chất lượng cao, cập nhật phim mới nhanh nhất với vietsub và thuyết minh chuẩn HD/4K.',
+    'Website xem phim trực tuyến với phim mới, vietsub và thuyết minh.',
   keywords: ['xem phim', 'phim vietsub', 'phim thuyet minh', 'phevo', 'phim moi', 'phim online'],
   icons: {
     icon: '/icon.png',
@@ -18,8 +20,8 @@ export const metadata: Metadata = {
     apple: '/icon.png',
   },
   openGraph: {
-    title: 'PHEVO Stream - Web Xem Phim HD/4K',
-    description: 'Xem phim bộ, phim lẻ, anime mới nhất với giao diện rạp phim cực mượt.',
+    title: 'PHEVO Stream - Xem Phim Trực Tuyến',
+    description: 'Khám phá phim bộ, phim lẻ và hoạt hình với giao diện xem phim tập trung.',
     type: 'website',
   },
 };
