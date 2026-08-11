@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -36,6 +37,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.graphics.painter.ColorPainter
 import com.phevo.tv.app.theme.PhevoTvColors
 import com.phevo.tv.app.theme.PhevoTvDimensions
 import com.phevo.tv.app.theme.PhevoTvShapes
@@ -59,9 +64,21 @@ fun PhevoTvButton(
             .height(PhevoTvDimensions.ButtonHeight)
             .widthIn(min = PhevoTvDimensions.ButtonMinWidth)
             .onFocusChanged { focused = it.isFocused }
+            .graphicsLayer {
+                val focusScale = if (focused) 1.035f else 1f
+                scaleX = focusScale
+                scaleY = focusScale
+                shadowElevation = if (focused) 6f else 0f
+                shape = PhevoTvShapes.Button
+                clip = false
+            }
             .border(
                 width = if (focused) PhevoTvDimensions.FocusOutlineWidth else 0.dp,
-                color = if (focused) PhevoTvColors.FocusOutline else Color.Transparent,
+                color = when {
+                    !focused -> Color.Transparent
+                    primary -> PhevoTvColors.FocusText
+                    else -> PhevoTvColors.FocusOutline
+                },
                 shape = PhevoTvShapes.Button,
             ),
         shape = PhevoTvShapes.Button,
@@ -236,6 +253,7 @@ fun EpisodeCard(
         else -> PhevoTvColors.SurfaceSecondary
     }
     val borderColor = when {
+        selected && focused -> PhevoTvColors.FocusText
         focused -> PhevoTvColors.FocusOutline
         selected -> PhevoTvColors.BrandPrimary
         else -> PhevoTvColors.BorderSubtle
@@ -246,6 +264,14 @@ fun EpisodeCard(
             .height(PhevoTvDimensions.EpisodeCardHeight)
             .clip(PhevoTvShapes.Button)
             .background(backgroundColor, PhevoTvShapes.Button)
+            .graphicsLayer {
+                val focusScale = if (focused) 1.035f else 1f
+                scaleX = focusScale
+                scaleY = focusScale
+                shadowElevation = if (focused) 4f else 0f
+                shape = PhevoTvShapes.Button
+                clip = false
+            }
             .border(
                 width = if (focused || selected) PhevoTvDimensions.FocusOutlineWidth else 1.dp,
                 color = borderColor,
@@ -397,6 +423,7 @@ fun TvEmptyState(
 
 @Composable
 fun TvErrorState(
+    message: String = "Không thể tải nội dung",
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     initialFocusRequester: FocusRequester? = null,
@@ -406,6 +433,13 @@ fun TvErrorState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        Text(
+            message,
+            style = PhevoTvTypography.BodyMedium,
+            color = PhevoTvColors.TextSecondary,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
         Text(
             "⚠",
             style = PhevoTvTypography.DisplayLarge,
@@ -434,6 +468,20 @@ fun TvErrorState(
 
 @Composable
 fun FakeArtwork(token: String?, title: String, modifier: Modifier = Modifier) {
+    if (token?.startsWith("https://") == true || token?.startsWith("http://") == true) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(token)
+                .crossfade(160)
+                .build(),
+            contentDescription = null,
+            placeholder = ColorPainter(PhevoTvColors.SurfaceElevated),
+            error = ColorPainter(PhevoTvColors.SurfaceElevated),
+            modifier = modifier.clip(PhevoTvShapes.Card),
+        )
+        return
+    }
+
     val color = when (token) {
         "sea-night", "sea-night-wide" -> Color(0xFF123D52)
         "city" -> Color(0xFF553B65)

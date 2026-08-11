@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +34,9 @@ import com.phevo.tv.app.theme.PhevoTvColors
 import com.phevo.tv.app.theme.PhevoTvDimensions
 import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.data.fake.FakeMovieRepository
+import com.phevo.tv.data.repository.VsmovMovieRepository
+import com.phevo.tv.domain.model.PlayerSelection
+import com.phevo.tv.domain.repository.MovieRepository
 import com.phevo.tv.domain.repository.PhevoTvRepository
 import com.phevo.tv.ui.account.AccountScreen
 import com.phevo.tv.ui.common.NavigationRailItem
@@ -61,29 +63,40 @@ private val railDestinations = listOf(
 )
 
 @Composable
-fun PhevoApp(repository: PhevoTvRepository = remember { FakeMovieRepository() }) {
+fun PhevoApp(
+    movieRepository: MovieRepository = remember { VsmovMovieRepository() },
+    localRepository: PhevoTvRepository = remember {
+        FakeMovieRepository(emptyWatchlist = true, emptyHistory = true)
+    },
+) {
     var destination by rememberSaveable { mutableStateOf(PhevoDestination.HOME) }
     var selectedMovieSlug by rememberSaveable { mutableStateOf("dem-trang-tren-bien") }
+    var detailStack by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var playerSelection by rememberSaveable { mutableStateOf<PlayerSelection?>(null) }
     var previousDestination by rememberSaveable { mutableStateOf(PhevoDestination.HOME) }
 
     val contentFocusRequester = remember { FocusRequester() }
     val railFocusRequester = remember { FocusRequester() }
 
-    val homeViewModel: HomeViewModel = viewModel(factory = PhevoViewModelFactory { HomeViewModel(repository) })
-    val searchViewModel: SearchViewModel = viewModel(factory = PhevoViewModelFactory { SearchViewModel(repository) })
-    val detailViewModel: DetailViewModel = viewModel(factory = PhevoViewModelFactory { DetailViewModel(repository) })
-    val watchlistViewModel: WatchlistViewModel = viewModel(factory = PhevoViewModelFactory { WatchlistViewModel(repository) })
-    val historyViewModel: HistoryViewModel = viewModel(factory = PhevoViewModelFactory { HistoryViewModel(repository) })
+    val homeViewModel: HomeViewModel = viewModel(factory = PhevoViewModelFactory { HomeViewModel(movieRepository) })
+    val searchViewModel: SearchViewModel = viewModel(factory = PhevoViewModelFactory { SearchViewModel(movieRepository) })
+    val detailViewModel: DetailViewModel = viewModel(factory = PhevoViewModelFactory { DetailViewModel(movieRepository) })
+    val exploreViewModel: com.phevo.tv.ui.explore.ExploreViewModel = viewModel(
+        factory = PhevoViewModelFactory { com.phevo.tv.ui.explore.ExploreViewModel(movieRepository) },
+    )
+    val watchlistViewModel: WatchlistViewModel = viewModel(factory = PhevoViewModelFactory { WatchlistViewModel(localRepository) })
+    val historyViewModel: HistoryViewModel = viewModel(factory = PhevoViewModelFactory { HistoryViewModel(localRepository) })
 
     BackHandler(enabled = destination != PhevoDestination.HOME) {
-        destination = when (destination) {
-            PhevoDestination.PLAYER -> PhevoDestination.DETAIL
-            else -> previousDestination
+        if (destination == PhevoDestination.DETAIL && detailStack.size > 1) {
+            detailStack = detailStack.dropLast(1)
+            selectedMovieSlug = detailStack.last()
+        } else {
+            destination = when (destination) {
+                PhevoDestination.PLAYER -> PhevoDestination.DETAIL
+                else -> previousDestination
+            }
         }
-    }
-
-    LaunchedEffect(destination) {
-        contentFocusRequester.requestFocus()
     }
 
     Row(
@@ -120,11 +133,13 @@ fun PhevoApp(repository: PhevoTvRepository = remember { FakeMovieRepository() })
                     contentFocusRequester = contentFocusRequester,
                     onOpenMovie = { slug ->
                         selectedMovieSlug = slug
+                        detailStack = listOf(slug)
                         previousDestination = PhevoDestination.HOME
                         destination = PhevoDestination.DETAIL
                     },
                     onOpenDetail = { slug ->
                         selectedMovieSlug = slug
+                        detailStack = listOf(slug)
                         previousDestination = PhevoDestination.HOME
                         destination = PhevoDestination.DETAIL
                     },
@@ -132,18 +147,31 @@ fun PhevoApp(repository: PhevoTvRepository = remember { FakeMovieRepository() })
                 PhevoDestination.SEARCH -> SearchScreen(
                     viewModel = searchViewModel,
                     contentFocusRequester = contentFocusRequester,
+                    railFocusRequester = railFocusRequester,
                     onOpenDetail = { slug ->
                         selectedMovieSlug = slug
+                        detailStack = listOf(slug)
                         previousDestination = PhevoDestination.SEARCH
                         destination = PhevoDestination.DETAIL
                     },
                 )
-                PhevoDestination.EXPLORE -> ExploreScreen(contentFocusRequester) { destination = PhevoDestination.HOME }
+                PhevoDestination.EXPLORE -> ExploreScreen(
+                    viewModel = exploreViewModel,
+                    contentFocusRequester = contentFocusRequester,
+                    railFocusRequester = railFocusRequester,
+                    onOpenDetail = { slug ->
+                        selectedMovieSlug = slug
+                        detailStack = listOf(slug)
+                        previousDestination = PhevoDestination.EXPLORE
+                        destination = PhevoDestination.DETAIL
+                    },
+                )
                 PhevoDestination.WATCHLIST -> WatchlistScreen(
                     viewModel = watchlistViewModel,
                     contentFocusRequester = contentFocusRequester,
                     onOpenDetail = { slug ->
                         selectedMovieSlug = slug
+                        detailStack = listOf(slug)
                         previousDestination = PhevoDestination.WATCHLIST
                         destination = PhevoDestination.DETAIL
                     },
@@ -154,6 +182,7 @@ fun PhevoApp(repository: PhevoTvRepository = remember { FakeMovieRepository() })
                     contentFocusRequester = contentFocusRequester,
                     onOpenDetail = { slug ->
                         selectedMovieSlug = slug
+                        detailStack = listOf(slug)
                         previousDestination = PhevoDestination.HISTORY
                         destination = PhevoDestination.DETAIL
                     },
@@ -163,11 +192,23 @@ fun PhevoApp(repository: PhevoTvRepository = remember { FakeMovieRepository() })
                     movieSlug = selectedMovieSlug,
                     viewModel = detailViewModel,
                     contentFocusRequester = contentFocusRequester,
-                    onPlay = { destination = PhevoDestination.PLAYER },
+                    railFocusRequester = railFocusRequester,
+                    onPlay = { selection ->
+                        playerSelection = selection
+                        destination = PhevoDestination.PLAYER
+                    },
                     onToggleWatchlist = watchlistViewModel::toggle,
-                    onOpenRelated = { slug -> selectedMovieSlug = slug },
+                    onOpenRelated = { slug ->
+                        if (detailStack.lastOrNull() != slug) {
+                            detailStack = detailStack + slug
+                        }
+                        selectedMovieSlug = slug
+                    },
                 )
-                PhevoDestination.PLAYER -> PlayerPlaceholderScreen(selectedMovieSlug, contentFocusRequester) {
+                PhevoDestination.PLAYER -> PlayerPlaceholderScreen(
+                    selection = playerSelection ?: PlayerSelection(selectedMovieSlug),
+                    contentFocusRequester = contentFocusRequester,
+                ) {
                     destination = PhevoDestination.DETAIL
                 }
             }

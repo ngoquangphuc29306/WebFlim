@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +22,6 @@ import com.phevo.tv.app.theme.PhevoTvShapes
 
 @Composable
 fun Modifier.phevoFocusedSurface(
-    enabled: Boolean = true,
     clipShape: androidx.compose.ui.graphics.Shape = PhevoTvShapes.Card,
     onFocused: (Boolean) -> Unit = {},
 ): Modifier {
@@ -57,5 +55,4 @@ fun Modifier.phevoFocusedSurface(
             focused = it.isFocused
             onFocused(it.isFocused)
         }
-        .focusable(enabled)
 }
