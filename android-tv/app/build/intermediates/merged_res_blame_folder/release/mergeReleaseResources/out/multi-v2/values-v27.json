@@ -1,0 +1,28 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.phevo.tv.app-mergeReleaseResources-43:/values-v27/values-v27.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\quang\\OneDrive\\Desktop\\Dev\\WebFlim\\android-tv\\app\\src\\main\\res\\values-v27\\styles.xml",
+                    "from": {
+                        "startLines": "1",
+                        "startColumns": "4",
+                        "startOffsets": "16",
+                        "endLines": "7",
+                        "endColumns": "12",
+                        "endOffsets": "403"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "8",
+                        "endColumns": "12",
+                        "endOffsets": "442"
+                    }
+                }
+            ]
+        }
+    ]
+}
