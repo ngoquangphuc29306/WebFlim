@@ -5,6 +5,11 @@ enum class MovieType {
     SERIES,
 }
 
+data class MovieCategory(
+    val name: String,
+    val slug: String?,
+)
+
 data class Movie(
     val movieSlug: String,
     val title: String,
@@ -22,6 +27,7 @@ data class Movie(
     val episodeCurrent: String? = null,
     val episodeTotal: String? = null,
     val genres: List<String> = emptyList(),
+    val categories: List<MovieCategory> = emptyList(),
     val countries: List<String> = emptyList(),
     val providerType: String? = null,
 )
@@ -43,6 +49,7 @@ data class MovieDetail(
     val movie: Movie,
     val synopsis: String,
     val genres: List<String> = emptyList(),
+    val categories: List<MovieCategory> = emptyList(),
     val countries: List<String> = emptyList(),
     val actors: List<String> = emptyList(),
     val directors: List<String> = emptyList(),
@@ -113,6 +120,15 @@ data class HomeContent(
     val newMovies: List<Movie>,
     val series: List<Movie>,
     val featuredMovies: List<Movie>,
+    val subteamMovies: List<Movie> = emptyList(),
+    val animationMovies: List<Movie> = emptyList(),
+)
+
+data class PlayerSelection(
+    val movieSlug: String,
+    val episodeSlug: String? = null,
+    val serverIndex: Int? = null,
+    val serverName: String? = null,
 )
 
 data class LogicalFocusState(

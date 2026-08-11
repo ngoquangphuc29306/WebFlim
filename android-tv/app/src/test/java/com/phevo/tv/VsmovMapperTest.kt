@@ -1,6 +1,7 @@
 package com.phevo.tv
 
 import com.phevo.tv.data.remote.vsmov.dto.VsmovDetailResponseDto
+import com.phevo.tv.data.remote.vsmov.dto.VsmovCategoryDto
 import com.phevo.tv.data.remote.vsmov.dto.VsmovItemDto
 import com.phevo.tv.data.remote.vsmov.dto.VsmovMovieDetailDto
 import com.phevo.tv.data.remote.vsmov.dto.VsmovServerDto
@@ -58,6 +59,28 @@ class VsmovMapperTest {
         assertEquals(listOf("Tập 2", "Tập 10"), detail.servers.first().episodes.map { it.name })
         assertEquals(2, detail.servers.size)
         assertTrue(detail.servers[1].episodes.isEmpty())
+    }
+
+    @Test
+    fun detailMapsCategorySlugAndOrderWithoutGuessingMissingSlug() {
+        val detail = VsmovMapper.mapDetail(
+            VsmovDetailResponseDto(
+                movie = VsmovMovieDetailDto(
+                    slug = "categorized",
+                    name = "Categorized",
+                    category = listOf(
+                        VsmovCategoryDto(name = "Hành động", slug = "hanh-dong"),
+                        VsmovCategoryDto(name = "Tâm lý", slug = null),
+                    ),
+                ),
+            ),
+        )!!
+
+        assertEquals(listOf("Hành động", "Tâm lý"), detail.categories.map { it.name })
+        assertEquals(listOf("hanh-dong", null), detail.categories.map { it.slug })
+        assertEquals(emptyList<com.phevo.tv.domain.model.MovieCategory>(), VsmovMapper.mapDetail(
+            VsmovDetailResponseDto(movie = VsmovMovieDetailDto(slug = "without-category", name = "Movie")),
+        )!!.categories)
     }
 
     @Test

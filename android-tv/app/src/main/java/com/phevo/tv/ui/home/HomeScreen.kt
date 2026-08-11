@@ -12,12 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,7 +50,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     when (val value = state) {
         HomeUiState.Loading -> TvLoadingState()
-        is HomeUiState.Error -> TvErrorState(onRetry = viewModel::load, initialFocusRequester = contentFocusRequester)
+        is HomeUiState.Error -> TvErrorState(message = value.message, onRetry = viewModel::load, initialFocusRequester = contentFocusRequester)
         is HomeUiState.Content -> HomeContent(
             value = value.value,
             contentFocusRequester = contentFocusRequester,
@@ -71,9 +69,7 @@ private fun HomeContent(
     onOpenDetail: (String) -> Unit,
     onRememberFocus: (String?, Int, String) -> Unit,
 ) {
-    LaunchedEffect(value.heroMovie.movieSlug) {
-        contentFocusRequester.requestFocus()
-    }
+    LaunchedEffect(value.heroMovie.movieSlug) { contentFocusRequester.requestFocus() }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(PhevoTvDimensions.RowGap),
@@ -97,19 +93,12 @@ private fun HomeContent(
                 )
             }
         }
-        item {
-            TvMovieRow("Mới cập nhật", value.newMovies, onOpenMovie, onRememberFocus = onRememberFocus)
-        }
-        item {
-            TvMovieRow("Phim bộ", value.series, onOpenMovie, onRememberFocus = onRememberFocus)
-        }
-        item {
-            TvMovieRow("Đề xuất", value.featuredMovies, onOpenMovie, onRememberFocus = onRememberFocus)
-        }
-        // Bottom safe area
-        item {
-            Spacer(Modifier.height(PhevoTvDimensions.Space2XL))
-        }
+        item { TvMovieRow("Mới cập nhật", value.newMovies, onOpenMovie, onRememberFocus = onRememberFocus) }
+        item { TvMovieRow("Phim bộ", value.series, onOpenMovie, onRememberFocus = onRememberFocus) }
+        item { TvMovieRow("Phim lẻ", value.featuredMovies, onOpenMovie, onRememberFocus = onRememberFocus) }
+        item { TvMovieRow("Phim Vietsub Subteam", value.subteamMovies, onOpenMovie, onRememberFocus = onRememberFocus) }
+        item { TvMovieRow("Hoạt hình", value.animationMovies, onOpenMovie, onRememberFocus = onRememberFocus) }
+        item { Spacer(Modifier.height(PhevoTvDimensions.Space2XL)) }
     }
 }
 
@@ -121,72 +110,38 @@ private fun HomeHero(
     onDetail: () -> Unit,
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(PhevoTvDimensions.HeroHeight),
+        modifier = Modifier.fillMaxWidth().height(PhevoTvDimensions.HeroHeight),
     ) {
-        // Full-bleed backdrop artwork
-        FakeArtwork(
-            movie.backdropToken,
-            movie.title,
-            Modifier.fillMaxSize(),
-        )
-
-        // Directional scrim: strong on left for text, fading to transparent on right
+        FakeArtwork(movie.backdropToken, movie.title, Modifier.fillMaxSize())
         Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            PhevoTvColors.ScrimHeroStart,
-                            PhevoTvColors.ScrimMedium,
-                            PhevoTvColors.ScrimHeroEnd,
-                        ),
-                        startX = 0f,
-                        endX = Float.POSITIVE_INFINITY,
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        PhevoTvColors.ScrimHeroStart,
+                        PhevoTvColors.ScrimMedium,
+                        PhevoTvColors.ScrimHeroEnd,
                     ),
+                    startX = 0f,
+                    endX = Float.POSITIVE_INFINITY,
                 ),
+            ),
         )
-
-        // Bottom fade for seamless row transition
         Box(
-            Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            PhevoTvColors.ScrimHeroEnd,
-                            PhevoTvColors.AppBackground,
-                        ),
-                    ),
-                ),
+            Modifier.fillMaxWidth().height(80.dp).align(Alignment.BottomCenter).background(
+                Brush.verticalGradient(colors = listOf(PhevoTvColors.ScrimHeroEnd, PhevoTvColors.AppBackground)),
+            ),
         )
-
-        // Hero content
         Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(
-                    start = PhevoTvDimensions.SafeAreaHorizontal,
-                    end = PhevoTvDimensions.SpaceXL,
-                    bottom = PhevoTvDimensions.Space3XL,
-                )
-                .fillMaxWidth(0.55f),
+            modifier = Modifier.align(Alignment.CenterStart).padding(
+                start = PhevoTvDimensions.SafeAreaHorizontal,
+                end = PhevoTvDimensions.SpaceXL,
+                bottom = PhevoTvDimensions.Space3XL,
+            ).fillMaxWidth(0.55f),
         ) {
-            // Quality badge
-            movie.quality?.let { quality ->
-                Text(
-                    quality,
-                    style = PhevoTvTypography.Metadata,
-                    color = PhevoTvColors.BrandFocused,
-                )
+            movie.quality?.let {
+                Text(it, style = PhevoTvTypography.Metadata, color = PhevoTvColors.BrandFocused)
                 Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
             }
-
-            // Title — hero uses DisplayLarge per design system
             Text(
                 movie.title,
                 style = PhevoTvTypography.DisplayLarge,
@@ -194,46 +149,29 @@ private fun HomeHero(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-
             Spacer(Modifier.height(PhevoTvDimensions.SpaceSM))
-
-            // Metadata line
             Text(
                 buildString {
-                    append(movie.year)
-                    append(" • ")
-                    append(movie.type.name.lowercase().replaceFirstChar { it.uppercase() })
+                    movie.year?.let { append(it) }
+                    if (movie.year != null) append(" • ")
+                    append(if (movie.type == com.phevo.tv.domain.model.MovieType.SERIES) "Phim bộ" else "Phim lẻ")
                     movie.rating?.let { append(" • ★ $it") }
                 },
                 style = PhevoTvTypography.Metadata,
                 color = PhevoTvColors.TextSecondary,
             )
-
             Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
-
-            // Synopsis
             Text(
-                "Khám phá câu chuyện mới trong không gian xem phim tập trung cho Android TV.",
+                movie.episodeLabel ?: movie.originalTitle ?: "Nội dung mới trên PHEVO.",
                 style = PhevoTvTypography.BodyLarge,
                 color = PhevoTvColors.TextSecondary,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-
             Spacer(Modifier.height(PhevoTvDimensions.SpaceLG))
-
-            // CTAs
             Row(horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceMD)) {
-                PhevoTvButton(
-                    "▶  Xem ngay",
-                    onPlay,
-                    modifier = Modifier.focusRequester(contentFocusRequester),
-                )
-                PhevoTvButton(
-                    "Chi tiết",
-                    onDetail,
-                    primary = false,
-                )
+                PhevoTvButton("▶  Xem ngay", onPlay, modifier = Modifier.focusRequester(contentFocusRequester))
+                PhevoTvButton("Chi tiết", onDetail, primary = false)
             }
         }
     }
@@ -249,7 +187,6 @@ private fun TvMovieRow(
 ) {
     if (movies.isEmpty()) return
     Column {
-        // Row title aligned with content safe area
         Text(
             title,
             style = PhevoTvTypography.TitleLarge,
@@ -259,17 +196,17 @@ private fun TvMovieRow(
         Spacer(Modifier.height(PhevoTvDimensions.RowTitleBottomSpacing))
         LazyRow(
             state = rememberLazyListState(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusGroup(),
-            contentPadding = PaddingValues(horizontal = PhevoTvDimensions.SafeAreaHorizontal - PhevoTvDimensions.FocusClipPadding),
+            modifier = Modifier.fillMaxWidth().focusGroup(),
+            contentPadding = PaddingValues(
+                horizontal = PhevoTvDimensions.SafeAreaHorizontal - PhevoTvDimensions.FocusClipPadding,
+            ),
             horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.CardGap),
         ) {
             itemsIndexed(movies, key = { _, movie -> movie.movieSlug }) { index, movie ->
                 if (continueWatching) {
                     ContinueWatchingCard(
                         movie = movie,
-                        progressPercent = 42,
+                        progressPercent = 0,
                         onClick = { onOpenMovie(movie.movieSlug) },
                         onFocused = { onRememberFocus(movie.movieSlug, index, title) },
                     )

@@ -12,6 +12,7 @@ import com.phevo.tv.data.remote.vsmov.dto.VsmovTaxonomyItemDto
 import com.phevo.tv.data.remote.vsmov.dto.VsmovCountryDto
 import com.phevo.tv.domain.model.Episode
 import com.phevo.tv.domain.model.Movie
+import com.phevo.tv.domain.model.MovieCategory
 import com.phevo.tv.domain.model.MovieDetail
 import com.phevo.tv.domain.model.MoviePage
 import com.phevo.tv.domain.model.MovieType
@@ -40,6 +41,7 @@ object VsmovMapper {
     fun mapMovie(item: VsmovItemDto): Movie? {
         val slug = item.slug?.trim().orEmpty()
         if (slug.isEmpty()) return null
+        val categories = item.category.orEmpty().mapNotNull(::mapCategory)
         return Movie(
             movieSlug = slug,
             title = item.name.cleanOrDefault("Chưa có tên"),
@@ -56,7 +58,8 @@ object VsmovMapper {
             duration = item.time.cleanOrNull(),
             episodeCurrent = item.episodeCurrent.cleanOrNull(),
             episodeTotal = item.episodeTotal.cleanOrNull(),
-            genres = item.category.orEmpty().mapNotNull(::mapTaxonomyName),
+            genres = categories.map { it.name },
+            categories = categories,
             countries = item.country.orEmpty().mapNotNull(::mapTaxonomyName),
             providerType = item.type.cleanOrNull(),
         )
@@ -78,10 +81,12 @@ object VsmovMapper {
     fun mapDetail(response: VsmovDetailResponseDto): MovieDetail? {
         val movie = response.movie ?: return null
         val baseMovie = mapMovie(movie.toItem()) ?: return null
+        val categories = movie.category.orEmpty().mapNotNull(::mapCategory)
         return MovieDetail(
             movie = baseMovie,
             synopsis = cleanSynopsis(movie.content),
-            genres = movie.category.orEmpty().mapNotNull(::mapTaxonomyName),
+            genres = categories.map { it.name },
+            categories = categories,
             countries = movie.country.orEmpty().mapNotNull(::mapTaxonomyName),
             actors = movie.actor.orEmpty().mapNotNull { it.cleanOrNull() },
             directors = movie.director.orEmpty().mapNotNull { it.cleanOrNull() },
@@ -107,6 +112,11 @@ object VsmovMapper {
             name = item.name.cleanOrDefault("Chưa phân loại"),
             slug = slug,
         )
+    }
+
+    private fun mapCategory(item: VsmovCategoryDto): MovieCategory? {
+        val name = item.name.cleanOrNull() ?: return null
+        return MovieCategory(name = name, slug = item.slug.cleanOrNull())
     }
 
     fun mapYear(item: VsmovTaxonomyItemDto): YearOption? {
