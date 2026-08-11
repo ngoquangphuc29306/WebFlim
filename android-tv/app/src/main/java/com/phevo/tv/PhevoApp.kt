@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.phevo.tv.app.navigation.PhevoDestination
@@ -47,7 +48,9 @@ import com.phevo.tv.ui.history.HistoryScreen
 import com.phevo.tv.ui.history.HistoryViewModel
 import com.phevo.tv.ui.home.HomeScreen
 import com.phevo.tv.ui.home.HomeViewModel
-import com.phevo.tv.ui.player.PlayerPlaceholderScreen
+import com.phevo.tv.ui.player.Media3PlaybackControllerFactory
+import com.phevo.tv.ui.player.PlayerScreen
+import com.phevo.tv.ui.player.PlayerViewModel
 import com.phevo.tv.ui.search.SearchScreen
 import com.phevo.tv.ui.search.SearchViewModel
 import com.phevo.tv.ui.watchlist.WatchlistScreen
@@ -77,6 +80,10 @@ fun PhevoApp(
 
     val contentFocusRequester = remember { FocusRequester() }
     val railFocusRequester = remember { FocusRequester() }
+    val applicationContext = LocalContext.current.applicationContext
+    val playbackControllerFactory = remember(applicationContext) {
+        Media3PlaybackControllerFactory(applicationContext)
+    }
 
     val homeViewModel: HomeViewModel = viewModel(factory = PhevoViewModelFactory { HomeViewModel(movieRepository) })
     val searchViewModel: SearchViewModel = viewModel(factory = PhevoViewModelFactory { SearchViewModel(movieRepository) })
@@ -86,6 +93,9 @@ fun PhevoApp(
     )
     val watchlistViewModel: WatchlistViewModel = viewModel(factory = PhevoViewModelFactory { WatchlistViewModel(localRepository) })
     val historyViewModel: HistoryViewModel = viewModel(factory = PhevoViewModelFactory { HistoryViewModel(localRepository) })
+    val playerViewModel: PlayerViewModel = viewModel(
+        factory = PhevoViewModelFactory { PlayerViewModel(movieRepository, playbackControllerFactory) },
+    )
 
     BackHandler(enabled = destination != PhevoDestination.HOME) {
         if (destination == PhevoDestination.DETAIL && detailStack.size > 1) {
@@ -205,8 +215,9 @@ fun PhevoApp(
                         selectedMovieSlug = slug
                     },
                 )
-                PhevoDestination.PLAYER -> PlayerPlaceholderScreen(
+                PhevoDestination.PLAYER -> PlayerScreen(
                     selection = playerSelection ?: PlayerSelection(selectedMovieSlug),
+                    viewModel = playerViewModel,
                     contentFocusRequester = contentFocusRequester,
                 ) {
                     destination = PhevoDestination.DETAIL
