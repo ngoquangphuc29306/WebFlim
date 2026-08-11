@@ -1,0 +1,41 @@
+{
+  "status": true,
+  "movie": {
+    "_id": 123,
+    "name": "Phim Kiểm Thử",
+    "origin_name": "Test Movie",
+    "slug": "phim-kiem-thu",
+    "poster_url": "/storage/images/poster.jpg",
+    "thumb_url": "https://vsmov.com/storage/images/thumb.jpg",
+    "year": 2025,
+    "type": "series",
+    "status": "ongoing",
+    "quality": "FHD",
+    "lang": "Vietsub",
+    "episode_current": "Tập 2",
+    "episode_total": "12",
+    "time": "45 phút",
+    "tmdb": { "vote_average": 8.26, "vote_count": 120 },
+    "content": "<p>Nội dung <b>kiểm thử</b>&nbsp;đầy đủ.</p>",
+    "category": [{ "_id": 30, "name": "Hành Động", "slug": "hanh-dong" }],
+    "country": [{ "_id": 1, "name": "Việt Nam", "slug": "viet-nam" }],
+    "actor": ["Diễn viên A"],
+    "director": ["Đạo diễn B"],
+    "keywords": ["kiểm thử"],
+    "trailer_url": "https://youtube.com/watch?v=test",
+    "chieurap": false
+  },
+  "episodes": [
+    {
+      "server_name": "Vietsub",
+      "server_data": [
+        { "name": "Tập 10", "slug": "tap-10", "filename": "ep10", "link_embed": "https://player.test/10", "link_m3u8": "https://stream.test/10.m3u8" },
+        { "name": "Tập 2", "slug": "tap-2", "filename": "ep2", "link_embed": "https://player.test/2" }
+      ]
+    },
+    {
+      "server_name": "Lồng tiếng",
+      "server_data": []
+    }
+  ]
+}

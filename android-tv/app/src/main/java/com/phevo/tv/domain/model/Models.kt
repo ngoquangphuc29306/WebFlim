@@ -9,18 +9,29 @@ data class Movie(
     val movieSlug: String,
     val title: String,
     val originalTitle: String? = null,
-    val year: Int,
+    val year: Int? = null,
     val type: MovieType,
     val posterToken: String? = null,
     val backdropToken: String? = null,
     val quality: String? = null,
     val episodeLabel: String? = null,
     val rating: Double? = null,
+    val status: String? = null,
+    val language: String? = null,
+    val duration: String? = null,
+    val episodeCurrent: String? = null,
+    val episodeTotal: String? = null,
+    val genres: List<String> = emptyList(),
+    val countries: List<String> = emptyList(),
+    val providerType: String? = null,
 )
 
 data class Episode(
     val episodeSlug: String,
     val name: String,
+    val filename: String? = null,
+    val embedUrl: String? = null,
+    val m3u8Url: String? = null,
 )
 
 data class Server(
@@ -37,6 +48,36 @@ data class MovieDetail(
     val directors: List<String> = emptyList(),
     val servers: List<Server> = emptyList(),
     val relatedMovieSlugs: List<String> = emptyList(),
+    val keywords: List<String> = emptyList(),
+    val trailerUrl: String? = null,
+    val showtimes: String? = null,
+    val isCinemaRelease: Boolean = false,
+)
+
+data class Pagination(
+    val totalItems: Int,
+    val totalItemsPerPage: Int,
+    val currentPage: Int,
+    val totalPages: Int,
+)
+
+data class MoviePage(
+    val items: List<Movie>,
+    val pagination: Pagination,
+    val title: String? = null,
+)
+
+data class TaxonomyItem(
+    val id: String,
+    val name: String,
+    val slug: String,
+)
+
+data class YearOption(
+    val id: String,
+    val name: String,
+    val slug: String,
+    val year: Int,
 )
 
 data class WatchlistItem(
