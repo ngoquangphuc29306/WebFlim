@@ -96,6 +96,7 @@ fun PhevoApp(
     val playerViewModel: PlayerViewModel = viewModel(
         factory = PhevoViewModelFactory { PlayerViewModel(movieRepository, playbackControllerFactory) },
     )
+    val showRail = destination != PhevoDestination.PLAYER
 
     BackHandler(enabled = destination != PhevoDestination.HOME) {
         if (destination == PhevoDestination.DETAIL && detailStack.size > 1) {
@@ -115,7 +116,6 @@ fun PhevoApp(
             .background(PhevoTvColors.AppBackground),
     ) {
         // Show rail only for top-level destinations (not detail/player)
-        val showRail = destination != PhevoDestination.PLAYER
         if (showRail) {
             PhevoNavigationRail(
                 current = destination,
@@ -135,7 +135,9 @@ fun PhevoApp(
                 .fillMaxHeight()
                 .weight(1f)
                 .focusGroup()
-                .focusProperties { left = railFocusRequester },
+                .focusProperties {
+                    if (showRail) left = railFocusRequester
+                },
         ) {
             when (destination) {
                 PhevoDestination.HOME -> HomeScreen(
