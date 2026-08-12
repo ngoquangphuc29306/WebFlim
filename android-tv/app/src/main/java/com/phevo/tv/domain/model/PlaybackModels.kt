@@ -15,6 +15,16 @@ sealed interface PlaybackSource {
     ) : PlaybackSource
 }
 
+/**
+ * The rendering backend selected after a provider source has been classified.
+ * An embedded source is never passed to Media3 as if it were direct media.
+ */
+enum class PlaybackBackend {
+    NativeMedia3,
+    EmbeddedWeb,
+    Unavailable,
+}
+
 enum class PlaybackStatus {
     IDLE,
     RESOLVING,

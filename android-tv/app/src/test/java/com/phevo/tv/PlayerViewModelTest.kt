@@ -9,6 +9,7 @@ import com.phevo.tv.domain.model.MoviePage
 import com.phevo.tv.domain.model.MovieType
 import com.phevo.tv.domain.model.PlaybackProgressEvent
 import com.phevo.tv.domain.model.PlaybackProgressReason
+import com.phevo.tv.domain.model.PlaybackBackend
 import com.phevo.tv.domain.model.PlaybackSource
 import com.phevo.tv.domain.model.PlaybackStatus
 import com.phevo.tv.domain.model.PlayerError
@@ -170,7 +171,7 @@ class PlayerViewModelTest {
     }
 
     @Test
-    fun serverSwitchToEmbedOnlyMatchingEpisodeIsUnsupported() = runTest {
+    fun serverSwitchToEmbedOnlyMatchingEpisodeSelectsEmbeddedBackendAndReleasesNativeController() = runTest {
         val controller = FakePlaybackController()
         val viewModel = playerViewModel(controller)
         viewModel.start(PlayerSelection("movie", "episode-2", 0, "Server A"))
@@ -180,12 +181,14 @@ class PlayerViewModelTest {
 
         assertEquals("episode-2", viewModel.state.value.episodeSlug)
         assertEquals("Server B", viewModel.state.value.serverName)
-        assertEquals(PlaybackStatus.UNSUPPORTED, viewModel.state.value.playbackStatus)
+        assertEquals(PlaybackBackend.EmbeddedWeb, viewModel.state.value.backend)
+        assertEquals(PlaybackStatus.READY, viewModel.state.value.playbackStatus)
         assertFalse(viewModel.state.value.canRetry)
+        assertEquals(1, controller.releaseCalls)
     }
 
     @Test
-    fun embedOnlyEpisodeIsExplicitlyUnsupportedAndNotRetryable() = runTest {
+    fun embedOnlyEpisodeUsesEmbeddedBackendWithoutNativePrepareOrProgressRetry() = runTest {
         val controller = FakePlaybackController()
         val embedDetail = detail().copy(
             servers = listOf(
@@ -198,9 +201,28 @@ class PlayerViewModelTest {
         runCurrent()
         viewModel.retryCurrentSource()
 
-        assertEquals(PlaybackStatus.UNSUPPORTED, viewModel.state.value.playbackStatus)
+        assertEquals(PlaybackBackend.EmbeddedWeb, viewModel.state.value.backend)
+        assertEquals(PlaybackStatus.READY, viewModel.state.value.playbackStatus)
         assertFalse(viewModel.state.value.canRetry)
         assertTrue(controller.prepares.isEmpty())
+    }
+
+    @Test
+    fun embedToDirectServerSwitchCreatesNativeControllerOnlyForTheDirectSource() = runTest {
+        val controller = FakePlaybackController()
+        val viewModel = playerViewModel(controller)
+
+        viewModel.start(PlayerSelection("movie", "episode-2", 1, "Server B"))
+        runCurrent()
+        assertEquals(PlaybackBackend.EmbeddedWeb, viewModel.state.value.backend)
+        assertTrue(controller.prepares.isEmpty())
+
+        viewModel.switchServer(0)
+
+        assertEquals(PlaybackBackend.NativeMedia3, viewModel.state.value.backend)
+        assertEquals("Server A", viewModel.state.value.serverName)
+        assertEquals(1, controller.prepares.size)
+        assertTrue(controller.prepares.single().source is PlaybackSource.DirectProgressive)
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.phevo.tv.domain.model.Episode
 import com.phevo.tv.domain.model.MovieDetail
 import com.phevo.tv.domain.model.PlaybackProgressEvent
 import com.phevo.tv.domain.model.PlaybackProgressReason
+import com.phevo.tv.domain.model.PlaybackBackend
 import com.phevo.tv.domain.model.PlaybackSource
 import com.phevo.tv.domain.model.PlaybackStatus
 import com.phevo.tv.domain.model.PlayerError
@@ -36,6 +37,7 @@ data class PlayerUiState(
     val servers: List<Server> = emptyList(),
     val playbackStatus: PlaybackStatus = PlaybackStatus.IDLE,
     val source: PlaybackSource = PlaybackSource.Missing,
+    val backend: PlaybackBackend = PlaybackBackend.Unavailable,
     val isPlaying: Boolean = false,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
@@ -72,7 +74,6 @@ class PlayerViewModel(
         released = false
         val request = ++requestGeneration
         resolveJob?.cancel()
-        ensureController()
         _state.value = PlayerUiState(
             movieSlug = selection.movieSlug,
             episodeSlug = selection.episodeSlug,
@@ -175,7 +176,9 @@ class PlayerViewModel(
     fun onForeground() = Unit
 
     fun attach(playerView: PlayerView) {
-        controller?.attach(playerView)
+        if (_state.value.backend == PlaybackBackend.NativeMedia3) {
+            controller?.attach(playerView)
+        }
     }
 
     fun detach(playerView: PlayerView) {
@@ -289,9 +292,14 @@ class PlayerViewModel(
         startPositionMs: Long,
     ) {
         val source = PlaybackSourceClassifier.classify(episode)
+        val backend = PlaybackBackendResolver.resolve(source)
         val generation = ++sourceGeneration
         stopProgressPolling()
-        controller?.stop()
+        if (backend == PlaybackBackend.NativeMedia3) {
+            controller?.stop()
+        } else {
+            releaseNativeController()
+        }
         val episodeIndex = server.episodes.indexOfFirst { it.episodeSlug == episode.episodeSlug }
         _state.value = _state.value.copy(
             episodeSlug = episode.episodeSlug,
@@ -300,6 +308,7 @@ class PlayerViewModel(
             serverName = server.serverName,
             servers = detail?.servers.orEmpty(),
             source = source,
+            backend = backend,
             isPlaying = false,
             positionMs = startPositionMs.coerceAtLeast(0L),
             durationMs = 0L,
@@ -315,11 +324,10 @@ class PlayerViewModel(
             is PlaybackSource.DirectProgressive,
             -> {
                 _state.value = _state.value.copy(playbackStatus = PlaybackStatus.PREPARING, canRetry = false)
-                controller?.prepare(generation, source, startPositionMs.coerceAtLeast(0L), playWhenReady = true)
+                ensureController().prepare(generation, source, startPositionMs.coerceAtLeast(0L), playWhenReady = true)
             }
             is PlaybackSource.UnsupportedEmbed -> _state.value = _state.value.copy(
-                playbackStatus = PlaybackStatus.UNSUPPORTED,
-                error = PlayerError.UnsupportedFormat("Episode is available only through an embedded web player"),
+                playbackStatus = PlaybackStatus.READY,
                 canRetry = false,
             )
             PlaybackSource.Missing -> fail(PlayerError.MissingSource("Episode has no playback source"))
@@ -362,6 +370,7 @@ class PlayerViewModel(
     private fun currentPosition(): Long = controller?.currentPositionMs?.coerceAtLeast(0L) ?: _state.value.positionMs
 
     private fun emitProgress(reason: PlaybackProgressReason) {
+        if (_state.value.backend != PlaybackBackend.NativeMedia3) return
         refreshProgress()
         val snapshot = _state.value
         val episodeSlug = snapshot.episodeSlug ?: return
@@ -379,6 +388,12 @@ class PlayerViewModel(
     }
 
     private fun currentServer(): Server? = _state.value.serverIndex?.let { detail?.servers?.getOrNull(it) }
+
+    private fun releaseNativeController() {
+        controller?.setListener(null)
+        controller?.release()
+        controller = null
+    }
 
     private fun fail(error: PlayerError) {
         stopProgressPolling()
