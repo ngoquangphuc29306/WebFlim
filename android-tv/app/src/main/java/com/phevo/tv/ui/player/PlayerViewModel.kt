@@ -66,6 +66,7 @@ class PlayerViewModel(
     private var resolveJob: Job? = null
     private var progressJob: Job? = null
     private var requestGeneration = 0L
+    private var playbackResolutionGeneration = 0L
     private var sourceGeneration = 0L
     private var lastPeriodicProgressAt = 0L
     private var released = false
@@ -73,6 +74,7 @@ class PlayerViewModel(
     fun start(selection: PlayerSelection, initialPositionMs: Long = 0L) {
         released = false
         val request = ++requestGeneration
+        playbackResolutionGeneration++
         resolveJob?.cancel()
         _state.value = PlayerUiState(
             movieSlug = selection.movieSlug,
@@ -139,7 +141,7 @@ class PlayerViewModel(
         val episode = server.episodes.firstOrNull { it.episodeSlug == episodeSlug }
             ?: return fail(PlayerError.MissingSource("Episode is not available on the selected server"))
         emitProgress(PlaybackProgressReason.SOURCE_SWITCH)
-        prepareEpisode(server, _state.value.serverIndex ?: 0, episode, 0L)
+        requestPlaybackEpisode(server, _state.value.serverIndex ?: 0, episode, 0L)
     }
 
     fun switchServer(serverIndex: Int) {
@@ -152,12 +154,12 @@ class PlayerViewModel(
             ?: return fail(PlayerError.MissingSource("Selected server has no episodes"))
         val preservedPosition = if (matchingEpisode != null) currentPosition() else 0L
         emitProgress(PlaybackProgressReason.SOURCE_SWITCH)
-        prepareEpisode(server, serverIndex, episode, preservedPosition)
+        requestPlaybackEpisode(server, serverIndex, episode, preservedPosition)
     }
 
     fun retryCurrentSource() {
         val source = _state.value.source
-        if (source !is PlaybackSource.DirectHls && source !is PlaybackSource.DirectProgressive) return
+        if (source !is PlaybackSource.DirectHls) return
         val position = currentPosition()
         val generation = ++sourceGeneration
         _state.value = _state.value.copy(
@@ -190,6 +192,7 @@ class PlayerViewModel(
         released = true
         emitProgress(PlaybackProgressReason.EXIT)
         requestGeneration++
+        playbackResolutionGeneration++
         sourceGeneration++
         resolveJob?.cancel()
         resolveJob = null
@@ -255,7 +258,7 @@ class PlayerViewModel(
         }
     }
 
-    private fun resolveInitialSelection(
+    private suspend fun resolveInitialSelection(
         movieDetail: MovieDetail,
         selection: PlayerSelection,
         initialPositionMs: Long,
@@ -267,7 +270,23 @@ class PlayerViewModel(
         } else {
             serverResolution.server.episodes.firstOrNull { it.episodeSlug == selection.episodeSlug }
         } ?: return fail(PlayerError.MissingSource("Selected episode could not be resolved"))
-        prepareEpisode(serverResolution.server, serverResolution.index, episode, initialPositionMs)
+        val resolvedEpisode = repository.resolvePlaybackEpisode(movieDetail, serverResolution.server, episode)
+        prepareEpisode(serverResolution.server, serverResolution.index, resolvedEpisode, initialPositionMs)
+    }
+
+    private fun requestPlaybackEpisode(
+        server: Server,
+        serverIndex: Int,
+        episode: Episode,
+        startPositionMs: Long,
+    ) {
+        val movieDetail = detail ?: return
+        val request = ++playbackResolutionGeneration
+        viewModelScope.launch {
+            val resolvedEpisode = repository.resolvePlaybackEpisode(movieDetail, server, episode)
+            if (request != playbackResolutionGeneration || released) return@launch
+            prepareEpisode(server, serverIndex, resolvedEpisode, startPositionMs)
+        }
     }
 
     private fun resolveServer(servers: List<Server>, selection: PlayerSelection): ResolvedServer? {
@@ -320,9 +339,7 @@ class PlayerViewModel(
             sourceGeneration = generation,
         )
         when (source) {
-            is PlaybackSource.DirectHls,
-            is PlaybackSource.DirectProgressive,
-            -> {
+            is PlaybackSource.DirectHls -> {
                 _state.value = _state.value.copy(playbackStatus = PlaybackStatus.PREPARING, canRetry = false)
                 ensureController().prepare(generation, source, startPositionMs.coerceAtLeast(0L), playWhenReady = true)
             }
@@ -330,8 +347,13 @@ class PlayerViewModel(
                 playbackStatus = PlaybackStatus.READY,
                 canRetry = false,
             )
-            PlaybackSource.Missing -> fail(PlayerError.MissingSource("Episode has no playback source"))
-            is PlaybackSource.Invalid -> fail(PlayerError.InvalidSource(source.reason))
+            PlaybackSource.HlsUnavailable,
+            PlaybackSource.Missing,
+            is PlaybackSource.Invalid,
+            -> _state.value = _state.value.copy(
+                playbackStatus = PlaybackStatus.UNSUPPORTED,
+                canRetry = false,
+            )
         }
     }
 

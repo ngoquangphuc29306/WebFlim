@@ -6,8 +6,10 @@ import com.phevo.tv.data.remote.vsmov.dto.VsmovDetailResponseDto
 import com.phevo.tv.data.remote.vsmov.mapper.VsmovMapper
 import com.phevo.tv.domain.model.DataError
 import com.phevo.tv.domain.model.DataResult
+import com.phevo.tv.domain.model.Episode
 import com.phevo.tv.domain.model.MovieDetail
 import com.phevo.tv.domain.model.MoviePage
+import com.phevo.tv.domain.model.Server
 import com.phevo.tv.domain.model.TaxonomyItem
 import com.phevo.tv.domain.model.YearOption
 import com.phevo.tv.domain.repository.CatalogEndpoint
@@ -19,6 +21,7 @@ import java.util.Calendar
 class VsmovMovieRepository(
     private val client: VsmovClient = VsmovClient.create(),
 ) : MovieRepository {
+    private val playbackRecovery = VsmovPlaybackRecovery(client::fallbackDetail)
     override suspend fun getLatestMovies(page: Int): DataResult<MoviePage> = mapListResult(
         client.latest(page.safePage()),
         title = "Phim Mới Cập Nhật",
@@ -107,6 +110,9 @@ class VsmovMovieRepository(
         return DataResult.Failure(primaryError(primary, cleanSlug))
     }
 
+    override suspend fun resolvePlaybackEpisode(detail: MovieDetail, server: Server, episode: Episode): Episode =
+        playbackRecovery.resolve(detail, server, episode)
+
     override suspend fun getCatalogMovies(request: CatalogRequest): DataResult<MoviePage> {
         if (request.endpoint == CatalogEndpoint.YEAR && request.filters.type != null) {
             return DataResult.Failure(
@@ -165,13 +171,7 @@ class VsmovMovieRepository(
         return firstNumber != null && firstNumber > 20
     }
 
-    private fun fallbackCandidates(slug: String): List<String> = buildList {
-        add(slug)
-        when (slug) {
-            "one-piece" -> add("dao-hai-tac")
-            "dao-hai-tac" -> add("one-piece")
-        }
-    }
+    private fun fallbackCandidates(slug: String): List<String> = VsmovPlaybackRecovery.fallbackCandidates(slug)
 
     private fun primaryError(
         primary: VsmovClient.RequestResult<VsmovDetailResponseDto>,

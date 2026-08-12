@@ -4,8 +4,10 @@ sealed interface PlaybackSource {
     val url: String?
 
     data class DirectHls(override val url: String) : PlaybackSource
-    data class DirectProgressive(override val url: String) : PlaybackSource
     data class UnsupportedEmbed(override val url: String) : PlaybackSource
+    data object HlsUnavailable : PlaybackSource {
+        override val url: String? = null
+    }
     data object Missing : PlaybackSource {
         override val url: String? = null
     }
@@ -17,7 +19,7 @@ sealed interface PlaybackSource {
 
 /**
  * The rendering backend selected after a provider source has been classified.
- * An embedded source is never passed to Media3 as if it were direct media.
+ * Direct HLS remains native; provider embeds are isolated in the WebView backend.
  */
 enum class PlaybackBackend {
     NativeMedia3,

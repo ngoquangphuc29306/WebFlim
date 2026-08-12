@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.net.http.SslError
 import android.os.Build
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.PermissionRequest
@@ -29,6 +31,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 class EmbedPlaybackHostState internal constructor() {
     private var closeCustomView: (() -> Unit)? = null
     private var activeWebView: WebView? = null
+    private var activeInputView: View? = null
 
     fun exitCustomViewIfShowing(): Boolean {
         val closer = closeCustomView ?: return false
@@ -42,6 +45,46 @@ class EmbedPlaybackHostState internal constructor() {
 
     internal fun setWebView(webView: WebView?) {
         activeWebView = webView
+        activeInputView = webView
+    }
+
+    internal fun setCustomInputView(view: View?) {
+        activeInputView = view ?: activeWebView
+    }
+
+    /** Delivers a generic hover event; it does not inspect or control provider DOM. */
+    fun dispatchPointerMove(x: Float, y: Float): Boolean {
+        val target = activeInputView ?: return false
+        val event = MotionEvent.obtain(
+            SystemClock.uptimeMillis(),
+            SystemClock.uptimeMillis(),
+            MotionEvent.ACTION_HOVER_MOVE,
+            x.coerceIn(0f, target.width.toFloat().coerceAtLeast(1f)),
+            y.coerceIn(0f, target.height.toFloat().coerceAtLeast(1f)),
+            0,
+        ).apply { source = android.view.InputDevice.SOURCE_MOUSE }
+        return try {
+            target.dispatchGenericMotionEvent(event)
+        } finally {
+            event.recycle()
+        }
+    }
+
+    /** Delivers a normal pointer click at the cursor's local WebView coordinates. */
+    fun dispatchClick(x: Float, y: Float): Boolean {
+        val target = activeInputView ?: return false
+        val safeX = x.coerceIn(0f, target.width.toFloat().coerceAtLeast(1f))
+        val safeY = y.coerceIn(0f, target.height.toFloat().coerceAtLeast(1f))
+        val downTime = SystemClock.uptimeMillis()
+        val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, safeX, safeY, 0)
+        val up = MotionEvent.obtain(downTime, downTime + 40L, MotionEvent.ACTION_UP, safeX, safeY, 0)
+        return try {
+            target.dispatchTouchEvent(down)
+            target.dispatchTouchEvent(up)
+        } finally {
+            down.recycle()
+            up.recycle()
+        }
     }
 
     internal fun onBackground() {
@@ -62,17 +105,16 @@ class EmbedPlaybackHostState internal constructor() {
             pauseTimers()
             destroy()
         }
+        closeCustomView = null
         activeWebView = null
+        activeInputView = null
     }
 }
 
 @Composable
 fun rememberEmbedPlaybackHostState(): EmbedPlaybackHostState = remember { EmbedPlaybackHostState() }
 
-/**
- * A constrained host for the official provider embed page. It has no JavaScript
- * bridge and never inspects provider content or derives a direct stream URL.
- */
+/** A constrained, provider-owned embed host. It has no JavaScript bridge or DOM access. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun EmbedPlaybackHost(
@@ -85,16 +127,16 @@ fun EmbedPlaybackHost(
     val decision = remember(embedUrl) { EmbedUrlPolicy.validateInitialUrl(embedUrl) }
 
     if (decision !is EmbedUrlPolicy.Decision.Allowed) {
-        LaunchedEffect(decision) { onLoadFailure((decision as EmbedUrlPolicy.Decision.Blocked).reason) }
+        LaunchedEffect(decision) {
+            onLoadFailure((decision as EmbedUrlPolicy.Decision.Blocked).reason)
+        }
         return
     }
 
     AndroidView(
         factory = { context ->
             val container = FrameLayout(context)
-            val customViewContainer = FrameLayout(context).apply {
-                visibility = View.GONE
-            }
+            val customViewContainer = FrameLayout(context).apply { visibility = View.GONE }
             val chromeClient = object : WebChromeClient() {
                 private var customView: View? = null
                 private var customViewCallback: CustomViewCallback? = null
@@ -111,6 +153,7 @@ fun EmbedPlaybackHost(
                         ),
                     )
                     customViewContainer.visibility = View.VISIBLE
+                    hostState.setCustomInputView(view)
                     hostState.setCustomViewCloser(::hideCustomView)
                 }
 
@@ -122,21 +165,22 @@ fun EmbedPlaybackHost(
                     request.deny()
                 }
 
-                fun hideCustomView() {
+                private fun hideCustomView() {
                     val activeView = customView ?: return
                     customViewContainer.removeView(activeView)
                     customViewContainer.visibility = View.GONE
                     customView = null
                     customViewCallback?.onCustomViewHidden()
                     customViewCallback = null
+                    hostState.setCustomInputView(null)
                     hostState.setCustomViewCloser(null)
                 }
             }
 
             val webView = WebView(context).apply {
                 setBackgroundColor(Color.BLACK)
-                isFocusable = true
-                isFocusableInTouchMode = true
+                isFocusable = false
+                isFocusableInTouchMode = false
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -146,9 +190,7 @@ fun EmbedPlaybackHost(
                     mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                     javaScriptCanOpenWindowsAutomatically = false
                     setSupportMultipleWindows(false)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        safeBrowsingEnabled = true
-                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) safeBrowsingEnabled = true
                 }
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -158,19 +200,12 @@ fun EmbedPlaybackHost(
                         return true
                     }
 
-                    override fun onPageFinished(view: WebView, url: String) {
-                        super.onPageFinished(view, url)
-                        view.post { view.requestFocus() }
-                    }
-
                     override fun onReceivedError(
                         view: WebView,
                         request: WebResourceRequest,
                         error: WebResourceError,
                     ) {
-                        if (request.isForMainFrame) {
-                            onLoadFailure("Không thể tải trang nhúng")
-                        }
+                        if (request.isForMainFrame) onLoadFailure("Không thể tải trang nhúng")
                     }
 
                     override fun onReceivedHttpError(
@@ -193,9 +228,7 @@ fun EmbedPlaybackHost(
                     }
                 }
                 webChromeClient = chromeClient
-                setDownloadListener { _, _, _, _, _ ->
-                    // Embed playback must not turn PHEVO into a download browser.
-                }
+                setDownloadListener { _, _, _, _, _ -> Unit }
                 setOnLongClickListener { true }
                 setOnCreateContextMenuListener { _, _, _ -> }
             }
@@ -217,14 +250,10 @@ fun EmbedPlaybackHost(
             webView.loadUrl(decision.url)
             container
         },
-        onRelease = {
-            hostState.dispose()
-        },
+        onRelease = { hostState.dispose() },
         modifier = modifier,
     )
 
-    // AndroidView owns the WebView. Lifecycle callbacks apply to all child
-    // WebViews without introducing a JavaScript pause/play bridge.
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {

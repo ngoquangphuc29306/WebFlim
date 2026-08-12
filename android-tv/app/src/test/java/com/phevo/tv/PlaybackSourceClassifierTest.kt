@@ -21,16 +21,16 @@ class PlaybackSourceClassifierTest {
     }
 
     @Test
-    fun commonDirectFileIsProgressive() {
+    fun nonHlsDirectFileIsUnavailable() {
         val source = PlaybackSourceClassifier.classify(
             Episode("tap-1", "Tập 1", m3u8Url = "https://media.example/video/movie.mp4"),
         )
 
-        assertEquals(PlaybackSource.DirectProgressive("https://media.example/video/movie.mp4"), source)
+        assertEquals(PlaybackSource.HlsUnavailable, source)
     }
 
     @Test
-    fun embedUrlIsUnsupportedEvenWhenQueryMentionsM3u8() {
+    fun embedUrlUsesEmbeddedWebEvenWhenQueryMentionsM3u8() {
         val source = PlaybackSourceClassifier.classify(
             Episode(
                 "tap-1",
@@ -39,7 +39,7 @@ class PlaybackSourceClassifierTest {
             ),
         )
 
-        assertTrue(source is PlaybackSource.UnsupportedEmbed)
+        assertEquals(PlaybackSource.UnsupportedEmbed("https://player.example/embed?id=movie.m3u8"), source)
     }
 
     @Test
@@ -70,6 +70,6 @@ class PlaybackSourceClassifierTest {
             Episode("tap-1", "Tập 1", m3u8Url = "https://player.example/watch?id=123.m3u8"),
         )
 
-        assertTrue(source is PlaybackSource.Invalid)
+        assertEquals(PlaybackSource.HlsUnavailable, source)
     }
 }

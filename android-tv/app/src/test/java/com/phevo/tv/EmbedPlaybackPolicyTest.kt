@@ -5,7 +5,6 @@ import com.phevo.tv.domain.model.PlaybackSource
 import com.phevo.tv.ui.player.EmbedUrlPolicy
 import com.phevo.tv.ui.player.PlaybackBackendResolver
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -16,10 +15,6 @@ class EmbedPlaybackPolicyTest {
             PlaybackBackend.NativeMedia3,
             PlaybackBackendResolver.resolve(PlaybackSource.DirectHls("https://media.example/video.m3u8")),
         )
-        assertEquals(
-            PlaybackBackend.NativeMedia3,
-            PlaybackBackendResolver.resolve(PlaybackSource.DirectProgressive("https://media.example/video.mp4")),
-        )
     }
 
     @Test
@@ -27,14 +22,15 @@ class EmbedPlaybackPolicyTest {
         assertEquals(
             PlaybackBackend.EmbeddedWeb,
             PlaybackBackendResolver.resolve(
-                PlaybackSource.UnsupportedEmbed("https://v9.streamvsmov.com/video/example"),
+                PlaybackSource.UnsupportedEmbed("https://v8.streamvsmov.com/video/abc"),
             ),
         )
     }
 
     @Test
-    fun missingAndInvalidSourcesAreUnavailable() {
+    fun missingHlsAndInvalidSourcesAreUnavailable() {
         assertEquals(PlaybackBackend.Unavailable, PlaybackBackendResolver.resolve(PlaybackSource.Missing))
+        assertEquals(PlaybackBackend.Unavailable, PlaybackBackendResolver.resolve(PlaybackSource.HlsUnavailable))
         assertEquals(
             PlaybackBackend.Unavailable,
             PlaybackBackendResolver.resolve(PlaybackSource.Invalid("javascript:alert(1)", "unsafe")),
@@ -42,26 +38,11 @@ class EmbedPlaybackPolicyTest {
     }
 
     @Test
-    fun onlyHttpsProviderEmbedHostsAreAllowed() {
-        assertTrue(
-            EmbedUrlPolicy.validateInitialUrl("https://v9.streamvsmov.com/video/example")
-                is EmbedUrlPolicy.Decision.Allowed,
-        )
-        assertTrue(
-            EmbedUrlPolicy.isAllowedNavigation("https://v14.streamvsmov.com/video/next"),
-        )
-    }
-
-    @Test
-    fun unsafeAndUnrelatedNavigationIsBlocked() {
-        listOf(
-            "http://v9.streamvsmov.com/video/example",
-            "javascript:alert(1)",
-            "file:///sdcard/movie.html",
-            "https://example.com/video",
-            "not a url",
-        ).forEach { value ->
-            assertFalse(EmbedUrlPolicy.isAllowedNavigation(value))
-        }
+    fun embedPolicyAllowsOnlyHttpsProviderHosts() {
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("https://v8.streamvsmov.com/video/abc") is EmbedUrlPolicy.Decision.Allowed)
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("http://v8.streamvsmov.com/video/abc") is EmbedUrlPolicy.Decision.Blocked)
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("javascript:alert(1)") is EmbedUrlPolicy.Decision.Blocked)
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("https://unrelated.example/video") is EmbedUrlPolicy.Decision.Blocked)
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("not a url") is EmbedUrlPolicy.Decision.Blocked)
     }
 }

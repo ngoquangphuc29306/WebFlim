@@ -5,8 +5,6 @@ import com.phevo.tv.domain.model.PlaybackSource
 import java.net.URI
 
 object PlaybackSourceClassifier {
-    private val progressiveExtensions = setOf("mp4", "m4v", "webm", "mkv")
-
     fun classify(episode: Episode): PlaybackSource {
         val direct = episode.m3u8Url?.trim().orEmpty()
         if (direct.isNotEmpty()) return classifyDirect(direct)
@@ -23,11 +21,8 @@ object PlaybackSourceClassifier {
         is ParsedUrl.Invalid -> PlaybackSource.Invalid(value, parsed.reason)
         is ParsedUrl.Valid -> {
             val extension = parsed.path.substringAfterLast('.', missingDelimiterValue = "").lowercase()
-            when {
-                extension == "m3u8" -> PlaybackSource.DirectHls(parsed.url)
-                extension in progressiveExtensions -> PlaybackSource.DirectProgressive(parsed.url)
-                else -> PlaybackSource.Invalid(value, "Direct media URL has no supported media extension")
-            }
+            if (extension == "m3u8") PlaybackSource.DirectHls(parsed.url)
+            else PlaybackSource.HlsUnavailable
         }
     }
 

@@ -65,7 +65,7 @@ class PlayerViewModelTest {
 
         val request = controller.prepares.single()
         assertEquals("episode-2", viewModel.state.value.episodeSlug)
-        assertTrue(request.source is PlaybackSource.DirectProgressive)
+        assertTrue(request.source is PlaybackSource.DirectHls)
         assertEquals(4_000L, request.startPositionMs)
         assertTrue(request.playWhenReady)
         assertEquals(PlaybackStatus.PREPARING, viewModel.state.value.playbackStatus)
@@ -171,7 +171,7 @@ class PlayerViewModelTest {
     }
 
     @Test
-    fun serverSwitchToEmbedOnlyMatchingEpisodeSelectsEmbeddedBackendAndReleasesNativeController() = runTest {
+    fun serverSwitchToEmbedOnlyMatchingEpisodeShowsEmbeddedWebAndReleasesNativeController() = runTest {
         val controller = FakePlaybackController()
         val viewModel = playerViewModel(controller)
         viewModel.start(PlayerSelection("movie", "episode-2", 0, "Server A"))
@@ -188,7 +188,7 @@ class PlayerViewModelTest {
     }
 
     @Test
-    fun embedOnlyEpisodeUsesEmbeddedBackendWithoutNativePrepareOrProgressRetry() = runTest {
+    fun embedOnlyEpisodeUsesEmbeddedWebWithoutNativePrepareOrRetry() = runTest {
         val controller = FakePlaybackController()
         val embedDetail = detail().copy(
             servers = listOf(
@@ -222,7 +222,7 @@ class PlayerViewModelTest {
         assertEquals(PlaybackBackend.NativeMedia3, viewModel.state.value.backend)
         assertEquals("Server A", viewModel.state.value.serverName)
         assertEquals(1, controller.prepares.size)
-        assertTrue(controller.prepares.single().source is PlaybackSource.DirectProgressive)
+        assertTrue(controller.prepares.single().source is PlaybackSource.DirectHls)
     }
 
     @Test
@@ -334,7 +334,7 @@ class PlayerViewModelTest {
                 "Server A",
                 listOf(
                     Episode("episode-1", "Tập 1", m3u8Url = "https://media.example/episode-1.m3u8"),
-                    Episode("episode-2", "Tập 2", m3u8Url = "https://media.example/episode-2.mp4"),
+                    Episode("episode-2", "Tập 2", m3u8Url = "https://media.example/episode-2.m3u8"),
                     Episode("episode-3", "Tập 3", m3u8Url = "https://media.example/episode-3.m3u8"),
                 ),
             ),
