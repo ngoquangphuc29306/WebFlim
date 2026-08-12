@@ -1,12 +1,15 @@
 package com.phevo.tv.ui.player
 
 import android.content.Context
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.util.UnstableApi
@@ -24,6 +27,8 @@ class Media3PlaybackControllerFactory(
 class Media3PlaybackController(
     context: Context,
 ) : PlaybackController, Player.Listener {
+    private val loggerTag = "PhevoMedia3"
+
     private val player = ExoPlayer.Builder(context).build().apply {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -68,13 +73,10 @@ class Media3PlaybackController(
                 .setUri(source.url)
                 .setMimeType(MimeTypes.APPLICATION_M3U8)
                 .build()
-            is PlaybackSource.DirectProgressive -> MediaItem.Builder()
-                .setMediaId(generation.toString())
-                .setUri(source.url)
-                .build()
             else -> error("Media3 can prepare only direct playback sources")
         }
         activeGeneration = generation
+        Log.i(loggerTag, "prepare generation=$generation source=${source::class.simpleName} player=${player.hashCode()}")
         player.setMediaItem(mediaItem, startPositionMs.coerceAtLeast(0L))
         player.prepare()
         player.playWhenReady = playWhenReady
@@ -97,7 +99,14 @@ class Media3PlaybackController(
     }
 
     override fun attach(playerView: PlayerView) {
-        if (!released) playerView.player = player
+        if (!released) {
+            playerView.player = player
+            Log.i(
+                loggerTag,
+                "attach generation=$activeGeneration player=${player.hashCode()} " +
+                    "playerView=${playerView.hashCode()} surface=${playerView.videoSurfaceView?.javaClass?.simpleName}",
+            )
+        }
     }
 
     override fun detach(playerView: PlayerView) {
@@ -120,19 +129,43 @@ class Media3PlaybackController(
             Player.STATE_ENDED -> EnginePlaybackStatus.ENDED
             else -> return
         }
+        Log.i(loggerTag, "state generation=$activeGeneration state=$status position=${player.currentPosition}")
         listener?.onPlaybackStatus(activeGeneration, status)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        Log.i(loggerTag, "isPlaying generation=$activeGeneration value=$isPlaying position=${player.currentPosition}")
         listener?.onIsPlayingChanged(activeGeneration, isPlaying)
     }
 
+    override fun onTracksChanged(tracks: Tracks) {
+        Log.i(loggerTag, "tracks generation=$activeGeneration ${summarizeTracks(tracks)}")
+    }
+
+    override fun onVideoSizeChanged(videoSize: VideoSize) {
+        Log.i(
+            loggerTag,
+            "videoSize generation=$activeGeneration width=${videoSize.width} height=${videoSize.height} " +
+                "pixelWidthHeightRatio=${videoSize.pixelWidthHeightRatio}",
+        )
+    }
+
     override fun onRenderedFirstFrame() {
+        Log.i(loggerTag, "firstFrame generation=$activeGeneration player=${player.hashCode()}")
         listener?.onFirstFrameRendered(activeGeneration)
     }
 
     override fun onPlayerError(error: PlaybackException) {
+        Log.e(loggerTag, "error generation=$activeGeneration code=${error.errorCodeName}")
         listener?.onPlaybackError(activeGeneration, Media3PlaybackErrorMapper.map(error))
+    }
+
+    private fun summarizeTracks(tracks: Tracks): String = tracks.groups.joinToString(separator = ";") { group ->
+        val selected = (0 until group.length).filter(group::isTrackSelected)
+        val format = group.getTrackFormat(0)
+        "type=${group.type},selected=$selected,mime=${format.sampleMimeType},codec=${format.codecs}," +
+            "size=${format.width}x${format.height},fps=${format.frameRate},bitrate=${format.bitrate}," +
+            "language=${format.language},roleFlags=${format.roleFlags}"
     }
 }
 

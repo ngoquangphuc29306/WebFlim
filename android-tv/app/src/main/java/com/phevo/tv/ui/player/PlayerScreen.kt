@@ -14,7 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,15 +37,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -54,7 +57,9 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -67,7 +72,6 @@ import com.phevo.tv.app.theme.PhevoTvColors
 import com.phevo.tv.app.theme.PhevoTvDimensions
 import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.domain.model.Episode
-import com.phevo.tv.domain.model.PlaybackSource
 import com.phevo.tv.domain.model.PlaybackBackend
 import com.phevo.tv.domain.model.PlaybackStatus
 import com.phevo.tv.domain.model.PlayerError
@@ -89,12 +93,16 @@ fun PlayerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val rootView = LocalView.current
     val playbackSessionActive = state.movieSlug.isNotBlank()
-    val isEmbedBackend = state.backend == PlaybackBackend.EmbeddedWeb &&
-        state.source is PlaybackSource.UnsupportedEmbed
     val isNativeBackend = state.backend == PlaybackBackend.NativeMedia3
+    val isEmbedBackend = state.backend == PlaybackBackend.EmbeddedWeb
     val embedHostState = rememberEmbedPlaybackHostState()
-    var embedReloadGeneration by remember { mutableLongStateOf(0L) }
-    var embedLoadFailure by remember { mutableStateOf<String?>(null) }
+    val embedUrl = (state.source as? com.phevo.tv.domain.model.PlaybackSource.UnsupportedEmbed)?.url
+    var embedLoadFailure by remember(state.sourceGeneration, embedUrl) { mutableStateOf<String?>(null) }
+    var cursorViewport by remember { mutableStateOf(IntSize.Zero) }
+    var cursorPosition by remember(state.sourceGeneration, embedUrl) { mutableStateOf<VirtualCursorPosition?>(null) }
+    var cursorVisible by remember(state.sourceGeneration, embedUrl) { mutableStateOf(true) }
+    var cursorPressed by remember(state.sourceGeneration, embedUrl) { mutableStateOf(false) }
+    var lastCursorInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     var controlsState by remember { mutableStateOf(PlayerControlsState.Visible) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -139,8 +147,20 @@ fun PlayerScreen(
         viewModel.start(selection)
     }
 
-    LaunchedEffect(state.sourceGeneration, isEmbedBackend) {
-        embedLoadFailure = null
+    LaunchedEffect(isEmbedBackend, state.sourceGeneration, cursorViewport) {
+        if (isEmbedBackend) {
+            hiddenControlsFocusRequester.requestFocus()
+            if (cursorPosition == null && cursorViewport != IntSize.Zero) {
+                cursorPosition = VirtualCursorMath.center(cursorViewport.width, cursorViewport.height)
+            }
+        }
+    }
+
+    LaunchedEffect(isEmbedBackend, lastCursorInteraction, cursorVisible) {
+        if (isEmbedBackend && cursorVisible) {
+            delay(4000L)
+            if (System.currentTimeMillis() - lastCursorInteraction >= 4000L) cursorVisible = false
+        }
     }
 
     LaunchedEffect(controlsState, state.playbackStatus) {
@@ -173,7 +193,7 @@ fun PlayerScreen(
     }
 
     DisposableEffect(rootView, state.isPlaying) {
-        rootView.keepScreenOn = isNativeBackend && state.isPlaying
+        rootView.keepScreenOn = (isNativeBackend && state.isPlaying) || isEmbedBackend
         onDispose { rootView.keepScreenOn = false }
     }
 
@@ -181,9 +201,7 @@ fun PlayerScreen(
         when {
             embedHostState.exitCustomViewIfShowing() -> Unit
             controlsState == PlayerControlsState.EpisodePanelOpen ||
-                controlsState == PlayerControlsState.ServerPanelOpen -> {
-                controlsState = PlayerControlsState.Visible
-            }
+                controlsState == PlayerControlsState.ServerPanelOpen -> controlsState = PlayerControlsState.Visible
             else -> onBackDetail()
         }
     }
@@ -194,9 +212,53 @@ fun PlayerScreen(
             .background(PhevoTvColors.AppBackground)
             .focusRequester(hiddenControlsFocusRequester)
             .focusable()
+            .onGloballyPositioned { coordinates ->
+                cursorViewport = coordinates.size
+                cursorPosition = cursorPosition?.let {
+                    VirtualCursorMath.clamp(it, coordinates.size.width, coordinates.size.height)
+                }
+            }
             .onKeyEvent { keyEvent ->
-                if (!isNativeBackend || keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
-                when (keyEvent.key) {
+                if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
+                if (isEmbedBackend && controlsState !in listOf(
+                        PlayerControlsState.EpisodePanelOpen,
+                        PlayerControlsState.ServerPanelOpen,
+                    )
+                ) {
+                    val position = cursorPosition ?: return@onKeyEvent true
+                    val repeatCount = keyEvent.nativeKeyEvent.repeatCount
+                    val direction = when (keyEvent.key) {
+                        Key.DirectionLeft -> VirtualCursorDirection.LEFT
+                        Key.DirectionRight -> VirtualCursorDirection.RIGHT
+                        Key.DirectionUp -> VirtualCursorDirection.UP
+                        Key.DirectionDown -> VirtualCursorDirection.DOWN
+                        else -> null
+                    }
+                    if (direction != null) {
+                        val next = VirtualCursorMath.move(
+                            position,
+                            direction,
+                            cursorViewport.width,
+                            cursorViewport.height,
+                            repeatCount,
+                        )
+                        cursorPosition = next
+                        cursorVisible = true
+                        lastCursorInteraction = System.currentTimeMillis()
+                        embedHostState.dispatchPointerMove(next.x, next.y)
+                        true
+                    } else if (keyEvent.key == Key.DirectionCenter || keyEvent.key == Key.Enter) {
+                        cursorVisible = true
+                        lastCursorInteraction = System.currentTimeMillis()
+                        cursorPressed = true
+                        embedHostState.dispatchClick(position.x, position.y)
+                        true
+                    } else {
+                        false
+                    }
+                } else if (!isNativeBackend) {
+                    false
+                } else when (keyEvent.key) {
                     Key.MediaPlay, Key.MediaPause, Key.MediaPlayPause -> {
                         if (state.isPlaying) viewModel.pause() else viewModel.play()
                         controlsState = PlayerControlsState.Visible
@@ -251,9 +313,8 @@ fun PlayerScreen(
                 }
             },
     ) {
-        if (isEmbedBackend) {
-            val embedUrl = (state.source as PlaybackSource.UnsupportedEmbed).url
-            key(state.sourceGeneration, embedUrl, embedReloadGeneration) {
+        if (isEmbedBackend && embedUrl != null) {
+            key(embedUrl) {
                 EmbedPlaybackHost(
                     embedUrl = embedUrl,
                     hostState = embedHostState,
@@ -261,12 +322,16 @@ fun PlayerScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            if (embedLoadFailure == null && controlsState !in listOf(
-                    PlayerControlsState.EpisodePanelOpen,
-                    PlayerControlsState.ServerPanelOpen,
-                )
-            ) {
-                EmbedActionBar(
+            VirtualCursorOverlay(
+                position = cursorPosition,
+                visible = cursorVisible,
+                pressed = cursorPressed,
+                onPressedConsumed = { cursorPressed = false },
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (embedLoadFailure != null) {
+                EmbedFailureOverlay(
+                    reason = embedLoadFailure.orEmpty(),
                     hasServers = state.servers.size > 1,
                     hasEpisodes = (state.serverIndex?.let(state.servers::getOrNull)?.episodes?.size ?: 0) > 1,
                     onSwitchServer = { controlsState = PlayerControlsState.ServerPanelOpen },
@@ -275,7 +340,7 @@ fun PlayerScreen(
                 )
             }
         } else {
-            // VIDEO SURFACE: Media3 remains the sole native backend.
+            // VIDEO SURFACE: current Media3 player is reattached after async recovery.
             AndroidView(
                 factory = { context ->
                     PlayerView(context).apply {
@@ -291,7 +356,7 @@ fun PlayerScreen(
                     }
                 },
                 update = {
-                    if (playbackSessionActive) viewModel.attach(it)
+                    if (playbackSessionActive && isNativeBackend) viewModel.attach(it)
                 },
                 onRelease = { viewModel.detach(it) },
                 modifier = Modifier.fillMaxSize(),
@@ -308,7 +373,7 @@ fun PlayerScreen(
 
         // ERROR OVERLAY
         val playbackError = state.error
-        if (!isEmbedBackend && state.playbackStatus == PlaybackStatus.ERROR && playbackError != null) {
+        if (state.playbackStatus == PlaybackStatus.ERROR && playbackError != null) {
             ErrorOverlay(
                 error = playbackError,
                 canRetry = state.canRetry,
@@ -321,7 +386,7 @@ fun PlayerScreen(
 
         // UNSUPPORTED OVERLAY
         if (!isEmbedBackend && state.playbackStatus == PlaybackStatus.UNSUPPORTED) {
-            UnsupportedOverlay(
+            HlsUnavailableOverlay(
                 hasServers = state.servers.size > 1,
                 hasEpisodes = (state.serverIndex?.let(state.servers::getOrNull)?.episodes?.size ?: 0) > 1,
                 onSwitchServer = { controlsState = PlayerControlsState.ServerPanelOpen },
@@ -376,19 +441,6 @@ fun PlayerScreen(
             )
         }
 
-        if (isEmbedBackend && embedLoadFailure != null) {
-            EmbedFailureOverlay(
-                hasServers = state.servers.size > 1,
-                hasEpisodes = (state.serverIndex?.let(state.servers::getOrNull)?.episodes?.size ?: 0) > 1,
-                onRetry = {
-                    embedLoadFailure = null
-                    embedReloadGeneration++
-                },
-                onSwitchServer = { controlsState = PlayerControlsState.ServerPanelOpen },
-                onSwitchEpisode = { controlsState = PlayerControlsState.EpisodePanelOpen },
-                onBack = onBackDetail,
-            )
-        }
 
         // EPISODE PANEL
         if (controlsState == PlayerControlsState.EpisodePanelOpen) {
@@ -430,40 +482,52 @@ fun PlayerScreen(
 }
 
 @Composable
-private fun BoxScope.EmbedActionBar(
-    hasServers: Boolean,
-    hasEpisodes: Boolean,
-    onSwitchServer: () -> Unit,
-    onSwitchEpisode: () -> Unit,
-    onBack: () -> Unit,
+private fun VirtualCursorOverlay(
+    position: VirtualCursorPosition?,
+    visible: Boolean,
+    pressed: Boolean,
+    onPressedConsumed: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .align(Alignment.TopEnd)
-            .padding(PhevoTvDimensions.SafeAreaHorizontal),
-        horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceSM),
+    if (!visible || position == null) return
+    LaunchedEffect(pressed) {
+        if (pressed) {
+            delay(120L)
+            onPressedConsumed()
+        }
+    }
+    androidx.compose.foundation.Canvas(
+        modifier = modifier.graphicsLayer { alpha = if (pressed) 0.72f else 1f },
     ) {
-        if (hasEpisodes) {
-            PhevoTvButton("Tập", onSwitchEpisode, primary = false)
+        val scale = if (pressed) 0.82f else 1f
+        val path = Path().apply {
+            moveTo(position.x, position.y)
+            lineTo(position.x, position.y + 42f * scale)
+            lineTo(position.x + 12f * scale, position.y + 31f * scale)
+            lineTo(position.x + 24f * scale, position.y + 51f * scale)
+            lineTo(position.x + 31f * scale, position.y + 47f * scale)
+            lineTo(position.x + 19f * scale, position.y + 27f * scale)
+            lineTo(position.x + 36f * scale, position.y + 27f * scale)
+            close()
         }
-        if (hasServers) {
-            PhevoTvButton("Server", onSwitchServer, primary = false)
-        }
-        PhevoTvButton("Quay lại", onBack, primary = false)
+        drawPath(path, color = ComposeColor.Black)
+        drawPath(
+            path = path,
+            color = ComposeColor.White,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f, cap = StrokeCap.Round),
+        )
     }
 }
 
 @Composable
 private fun EmbedFailureOverlay(
+    reason: String,
     hasServers: Boolean,
     hasEpisodes: Boolean,
-    onRetry: () -> Unit,
     onSwitchServer: () -> Unit,
     onSwitchEpisode: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val initialFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { initialFocusRequester.requestFocus() }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -476,21 +540,18 @@ private fun EmbedFailureOverlay(
             verticalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceLG),
         ) {
             Text(
-                text = "Không thể tải nguồn phát nhúng",
+                text = "Không thể tải trình phát web",
                 style = PhevoTvTypography.TitleLarge,
                 color = PhevoTvColors.TextPrimary,
             )
             Text(
-                text = "Hãy thử tải lại trang, đổi server hoặc chọn tập khác.",
+                text = reason,
                 style = PhevoTvTypography.BodyLarge,
                 color = PhevoTvColors.TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceMD)) {
-                PhevoTvButton(
-                    label = "Thử lại trang nhúng",
-                    onClick = onRetry,
-                    modifier = Modifier.focusRequester(initialFocusRequester),
-                )
                 if (hasServers) PhevoTvButton("Đổi server", onSwitchServer, primary = false)
                 if (hasEpisodes) PhevoTvButton("Chọn tập khác", onSwitchEpisode, primary = false)
                 PhevoTvButton("Quay lại", onBack, primary = false)
@@ -830,7 +891,7 @@ private fun ErrorOverlay(
 }
 
 @Composable
-private fun UnsupportedOverlay(
+private fun HlsUnavailableOverlay(
     hasServers: Boolean,
     hasEpisodes: Boolean,
     onSwitchServer: () -> Unit,
@@ -852,16 +913,12 @@ private fun UnsupportedOverlay(
             modifier = Modifier.padding(PhevoTvDimensions.Space2XL),
         ) {
             Text(
-                text = "📱",
-                style = PhevoTvTypography.DisplayLarge,
-            )
-            Text(
-                text = "Nguồn này chưa hỗ trợ phát trực tiếp trên Android TV",
+                text = "Không có nguồn HLS khả dụng cho tập này",
                 style = PhevoTvTypography.TitleLarge,
                 color = PhevoTvColors.TextPrimary,
             )
             Text(
-                text = "Video này hiện chỉ có nguồn phát web nhúng. Hãy thử đổi server hoặc chọn tập khác.",
+                text = "Hãy thử đổi server hoặc chọn tập khác.",
                 style = PhevoTvTypography.BodyMedium,
                 color = PhevoTvColors.TextSecondary,
             )

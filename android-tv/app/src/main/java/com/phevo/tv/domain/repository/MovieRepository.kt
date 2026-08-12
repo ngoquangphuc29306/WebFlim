@@ -1,8 +1,10 @@
 package com.phevo.tv.domain.repository
 
 import com.phevo.tv.domain.model.DataResult
+import com.phevo.tv.domain.model.Episode
 import com.phevo.tv.domain.model.MovieDetail
 import com.phevo.tv.domain.model.MoviePage
+import com.phevo.tv.domain.model.Server
 import com.phevo.tv.domain.model.TaxonomyItem
 import com.phevo.tv.domain.model.YearOption
 
@@ -26,6 +28,13 @@ interface MovieRepository {
     suspend fun getYearsList(): DataResult<List<YearOption>>
 
     suspend fun getMovieDetail(slug: String): DataResult<MovieDetail>
+
+    /** Resolves only playback fields while preserving the VSMov detail contract. */
+    suspend fun resolvePlaybackEpisode(
+        detail: MovieDetail,
+        server: Server,
+        episode: Episode,
+    ): Episode = episode
 
     suspend fun getCatalogMovies(request: CatalogRequest): DataResult<MoviePage>
 }
