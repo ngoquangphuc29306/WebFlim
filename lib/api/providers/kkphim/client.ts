@@ -1,4 +1,4 @@
-import type { ProviderError } from '@/types/movie';
+import type { MovieBrowseFilter, ProviderError } from '@/types/movie';
 import type {
   KkPhimDetailResponseDto,
   KkPhimListResponseDto,
@@ -23,12 +23,31 @@ export interface KkPhimClientContract {
   countries(): Promise<KkPhimRequestResult<KkPhimTaxonomyResponseDto>>;
   years(): Promise<KkPhimRequestResult<KkPhimYearResponseDto>>;
   detail(slug: string): Promise<KkPhimRequestResult<KkPhimDetailResponseDto>>;
+  browse(filter: MovieBrowseFilter): Promise<KkPhimRequestResult<KkPhimListResponseDto>>;
 }
 
 export type KkPhimRequestResult<T> = {
   data: T | null;
   error: ProviderError | null;
 };
+
+export function buildKkPhimBrowseQuery(filter: MovieBrowseFilter): Record<string, string | number | undefined> {
+  const year = filter.year
+    ? filter.year
+    : filter.yearFrom && filter.yearTo && filter.yearFrom <= filter.yearTo
+      ? `${filter.yearFrom},${filter.yearTo}`
+      : undefined;
+  return {
+    page: Math.max(1, filter.page ?? 1),
+    limit: filter.limit,
+    category: filter.genre,
+    country: filter.country,
+    year,
+    sort_lang: filter.language,
+    sort_field: filter.sort === 'updated' ? 'modified.time' : filter.sort === 'created' ? '_id' : filter.sort,
+    sort_type: filter.order,
+  };
+}
 
 function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -106,6 +125,13 @@ export class KkPhimClient implements KkPhimClientContract {
 
   detail(slug: string): Promise<KkPhimRequestResult<KkPhimDetailResponseDto>> {
     return this.requestJson(`/v1/api/phim/${encodeURIComponent(slug)}`, 60);
+  }
+
+  browse(filter: MovieBrowseFilter): Promise<KkPhimRequestResult<KkPhimListResponseDto>> {
+    const path = filter.type
+      ? `/v1/api/danh-sach/${encodeURIComponent(filter.type)}`
+      : '/v1/api/danh-sach';
+    return this.requestJson(this.withQuery(path, buildKkPhimBrowseQuery(filter)), 60);
   }
 
   private withQuery(path: string, values: Record<string, string | number | undefined>): string {

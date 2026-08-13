@@ -2,7 +2,9 @@ import type {
   CatalogRequest,
   CategoryModel,
   CountryModel,
+  MovieBrowseFilter,
   MovieApiError,
+  MovieProviderCapabilities,
   ProviderError,
   MovieCardModel,
   MovieDetailModel,
@@ -37,6 +39,7 @@ export interface HomepageData {
 
 export interface MovieProvider {
   readonly key: 'vsmov' | 'kkphim';
+  readonly capabilities: MovieProviderCapabilities;
 
   getLatestMovies(page?: number): Promise<MovieListResult>;
   getMovieListBySlug(slug: string, page?: number): Promise<MovieListWithTitleResult>;
@@ -48,6 +51,7 @@ export interface MovieProvider {
   getCountriesList(): Promise<CountryModel[]>;
   getYearsList(): Promise<YearOptionModel[]>;
   getMovieDetail(slug: string): Promise<MovieDetailResult>;
+  browseMovies(filter: MovieBrowseFilter): Promise<MovieListWithTitleResult>;
   getCatalogMovies(request: CatalogRequest): Promise<MovieListWithTitleResult>;
   getHomepageData(): Promise<HomepageData>;
 }

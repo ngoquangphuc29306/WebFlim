@@ -1,21 +1,18 @@
 import type { Metadata } from 'next';
-import { MovieCardModel } from '@/types/movie';
 import {
-  getGenresList,
+  activeMovieProvider,
+  activeMovieProviderCapabilities,
+  browseMovies,
   getCountriesList,
+  getGenresList,
   getYearsList,
-  getCatalogMovies,
 } from '@/lib/api/movies';
-import {
-  parseCatalogFilters,
-  resolveCatalogRequest,
-} from '@/lib/api/discovery-resolver';
+import { parseMovieBrowseFilter } from '@/lib/api/discovery-resolver';
 import DiscoveryClientView from '@/components/movie/DiscoveryClientView';
 
 export const metadata: Metadata = {
-  title: 'Khám Phá Phim - Bộ Lọc Phim Thông Minh PHEVO',
-  description:
-    'Lọc phim theo thể loại, quốc gia, năm sản xuất và loại phim nhanh chóng, chính xác nhất.',
+  title: 'Khám Phá Phim - Bộ Lọc Phim PHEVO',
+  description: 'Lọc phim theo thể loại, quốc gia, năm sản xuất, ngôn ngữ và cách sắp xếp.',
 };
 
 interface PageProps {
@@ -23,48 +20,26 @@ interface PageProps {
 }
 
 export default async function DiscoveryPage({ searchParams }: PageProps) {
-  const resolvedParams = await searchParams;
-  const filters = parseCatalogFilters(resolvedParams);
-
-  const [genres, countries, years] = await Promise.all([
+  const filters = parseMovieBrowseFilter(await searchParams);
+  const [genres, countries, years, browseResult] = await Promise.all([
     getGenresList(),
     getCountriesList(),
     getYearsList(),
+    browseMovies(filters),
   ]);
-
-  const resolved = resolveCatalogRequest(filters);
-
-  let items: MovieCardModel[] = [];
-  let pagination = {
-    totalItems: 0,
-    totalItemsPerPage: 24,
-    currentPage: 1,
-    totalPages: 1,
-  };
-  let title = 'Khám Phá Phim';
-  let errorMsg: string | null = null;
-
-  if (resolved.supported && resolved.request) {
-    const res = await getCatalogMovies(resolved.request);
-    items = res.items;
-    pagination = res.pagination;
-    title = res.title;
-    if (res.error) {
-      errorMsg = res.error.message;
-    }
-  }
 
   return (
     <DiscoveryClientView
       filters={filters}
-      resolved={resolved}
       genres={genres}
       countries={countries}
       years={years}
-      items={items}
-      pagination={pagination}
-      title={title}
-      error={errorMsg}
+      items={browseResult.items}
+      pagination={browseResult.pagination}
+      title={browseResult.title}
+      error={browseResult.error?.message}
+      provider={activeMovieProvider}
+      capabilities={activeMovieProviderCapabilities}
     />
   );
 }

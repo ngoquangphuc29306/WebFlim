@@ -12,8 +12,9 @@ import {
   getYearsList,
   searchMovies,
 } from '@/lib/api/vsmov';
-import type { CatalogRequest } from '@/types/movie';
-import type { MovieProvider } from '@/lib/api/providers/movie-provider';
+import type { CatalogRequest, MovieBrowseFilter, MovieProviderCapabilities } from '@/types/movie';
+import { resolveCatalogRequest } from '@/lib/api/discovery-resolver';
+import { emptyPagination, invalidProviderError, type MovieListWithTitleResult, type MovieProvider } from '@/lib/api/providers/movie-provider';
 
 function addMovieIdentity<T extends { slug: string }>(movie: T) {
   return { ...movie, providerIdentity: { provider: 'vsmov' as const, providerSlug: movie.slug } };
@@ -43,6 +44,13 @@ function addDetailIdentity<T extends { movie: { slug: string; episodes: Array<{ 
 /** Compatibility adapter around the established VSMov implementation. */
 export class VsmovMovieProvider implements MovieProvider {
   readonly key = 'vsmov' as const;
+  readonly capabilities: MovieProviderCapabilities = {
+    combinedBrowseFilters: false,
+    yearRange: false,
+    languageFilter: false,
+    sorting: false,
+    browseTypes: ['phim-le', 'phim-bo'],
+  };
 
   getLatestMovies(page = 1) {
     return getLatestMovies(page).then(addListIdentity);
@@ -82,6 +90,41 @@ export class VsmovMovieProvider implements MovieProvider {
 
   getMovieDetail(slug: string) {
     return getMovieDetail(slug).then(addDetailIdentity);
+  }
+
+  async browseMovies(filter: MovieBrowseFilter): Promise<MovieListWithTitleResult> {
+    if (
+      filter.yearFrom ||
+      filter.yearTo ||
+      filter.language ||
+      filter.sort ||
+      filter.order ||
+      (filter.type && !this.capabilities.browseTypes.includes(filter.type))
+    ) {
+      return {
+        items: [],
+        pagination: emptyPagination(),
+        title: 'Khám phá phim',
+        error: invalidProviderError('vsmov', 'Nguồn dữ liệu hiện tại không hỗ trợ bộ lọc nâng cao này.'),
+      };
+    }
+
+    const resolved = resolveCatalogRequest({
+      genre: filter.genre,
+      country: filter.country,
+      year: filter.year,
+      type: filter.type === 'phim-bo' ? 'series' : filter.type === 'phim-le' ? 'single' : undefined,
+      page: filter.page,
+    });
+    if (!resolved.supported || !resolved.request) {
+      return {
+        items: [],
+        pagination: emptyPagination(),
+        title: 'Khám phá phim',
+        error: invalidProviderError('vsmov', resolved.reason ?? 'Tổ hợp bộ lọc chưa được nguồn dữ liệu hỗ trợ.'),
+      };
+    }
+    return this.getCatalogMovies(resolved.request).then((result) => ({ ...result, title: 'Khám phá phim' }));
   }
 
   getCatalogMovies(request: CatalogRequest) {

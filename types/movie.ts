@@ -211,6 +211,37 @@ export interface CatalogResolverResult {
   request?: CatalogRequest;
 }
 
+/**
+ * Provider-neutral browse state for /kham-pha. Provider adapters own the
+ * serialization of this state into upstream query parameters.
+ */
+export type MovieBrowseType = 'phim-le' | 'phim-bo' | 'tv-shows' | 'hoat-hinh';
+export type MovieBrowseLanguage = 'vietsub' | 'thuyet-minh' | 'long-tieng';
+export type MovieBrowseSort = 'updated' | 'created' | 'year';
+export type MovieBrowseOrder = 'asc' | 'desc';
+
+export interface MovieBrowseFilter {
+  type?: MovieBrowseType;
+  genre?: string;
+  country?: string;
+  year?: number;
+  yearFrom?: number;
+  yearTo?: number;
+  language?: MovieBrowseLanguage;
+  sort?: MovieBrowseSort;
+  order?: MovieBrowseOrder;
+  page?: number;
+  limit?: number;
+}
+
+export interface MovieProviderCapabilities {
+  combinedBrowseFilters: boolean;
+  yearRange: boolean;
+  languageFilter: boolean;
+  sorting: boolean;
+  browseTypes: readonly MovieBrowseType[];
+}
+
 export interface MovieCardModel {
   id: string;
   slug: string;
