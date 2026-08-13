@@ -1,0 +1,17 @@
+{
+  "id": 603,
+  "title": "Ma Trận",
+  "original_title": "The Matrix",
+  "overview": "Một lập trình viên phát hiện bản chất của thế giới.",
+  "poster_path": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
+  "backdrop_path": "/waCRuAW5ocONRehP556vPexVXA9.jpg",
+  "release_date": "1999-03-30",
+  "original_language": "en",
+  "genres": [{ "id": 28, "name": "Hành Động" }, { "id": 878, "name": "Khoa Học Viễn Tưởng" }],
+  "vote_average": 8.2,
+  "vote_count": 26000,
+  "popularity": 76.4,
+  "runtime": 136,
+  "status": "Released",
+  "tagline": "Welcome to the Real World."
+}
