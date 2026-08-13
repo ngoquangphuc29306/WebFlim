@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchMovies } from '@/lib/api/vsmov';
+import { searchMovies } from '@/lib/api/movies';
 import type { SearchSuggestion } from '@/types/search';
 
 export async function GET(request: NextRequest) {

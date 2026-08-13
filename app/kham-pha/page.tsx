@@ -5,7 +5,7 @@ import {
   getCountriesList,
   getYearsList,
   getCatalogMovies,
-} from '@/lib/api/vsmov';
+} from '@/lib/api/movies';
 import {
   parseCatalogFilters,
   resolveCatalogRequest,

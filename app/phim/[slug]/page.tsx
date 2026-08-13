@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { getMovieDetail, getMoviesByGenre, getLatestMovies } from '@/lib/api/vsmov';
+import { getMovieDetail, getMoviesByGenre, getLatestMovies } from '@/lib/api/movies';
 import { MovieCardModel } from '@/types/movie';
 import MovieDetails from '@/components/movie/MovieDetails';
 import MovieRow from '@/components/movie/MovieRow';

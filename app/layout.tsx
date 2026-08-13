@@ -5,7 +5,7 @@ import Footer from '@/components/layout/Footer';
 import BottomNav from '@/components/layout/BottomNav';
 import ToastContainer from '@/components/ui/Toast';
 import { Providers } from '@/app/providers';
-import { getGenresList } from '@/lib/api/vsmov';
+import { getGenresList } from '@/lib/api/movies';
 import { getSiteUrl } from '@/lib/site-config';
 
 export const metadata: Metadata = {

@@ -132,6 +132,40 @@ export interface VSMovApiResult<T> {
   error: VSMovApiError | null;
 }
 
+export type MovieProviderKey = 'vsmov' | 'kkphim';
+
+export interface ProviderIdentity {
+  provider: MovieProviderKey;
+  providerSlug: string;
+}
+
+export interface ExternalIdentity {
+  tmdbId?: string;
+  tmdbType?: 'movie' | 'tv';
+  tmdbSeason?: number | null;
+  imdbId?: string;
+}
+
+export type ProviderErrorType =
+  | 'NETWORK_ERROR'
+  | 'TIMEOUT'
+  | 'HTTP_ERROR'
+  | 'NOT_FOUND'
+  | 'INVALID_RESPONSE'
+  | 'EMPTY_RESPONSE'
+  | 'INVALID_REQUEST';
+
+export interface ProviderError {
+  type: ProviderErrorType;
+  message: string;
+  provider: MovieProviderKey;
+  statusCode?: number;
+  url?: string;
+  cause?: string;
+}
+
+export type MovieApiError = VSMovApiError | ProviderError;
+
 // Normalized UI Domain Models
 export interface CategoryModel {
   id: number | string;
@@ -197,6 +231,8 @@ export interface MovieCardModel {
   views?: number;
   categories: CategoryModel[];
   countries: CountryModel[];
+  providerIdentity?: ProviderIdentity;
+  externalIdentity?: ExternalIdentity;
 }
 
 export interface EpisodeItemModel {
@@ -205,6 +241,7 @@ export interface EpisodeItemModel {
   filename?: string;
   embedUrl: string;
   m3u8Url?: string;
+  providerIdentity?: ProviderIdentity;
 }
 
 export interface ServerGroupModel {

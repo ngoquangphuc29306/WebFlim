@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCountriesList } from '@/lib/api/vsmov';
+import { getCountriesList } from '@/lib/api/movies';
 
 export async function GET() {
   try {

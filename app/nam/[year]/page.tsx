@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { getMoviesByYear } from '@/lib/api/vsmov';
+import { getMoviesByYear } from '@/lib/api/movies';
 import MovieGrid from '@/components/movie/MovieGrid';
 import { Calendar } from 'lucide-react';
 

@@ -97,6 +97,12 @@ export function normalizeMovie(item: VSMovItem): MovieCardModel {
     views: typeof item.view === 'number' ? item.view : undefined,
     categories,
     countries,
+    externalIdentity: {
+      tmdbId: item.tmdb?.id,
+      tmdbType: item.tmdb?.type === 'movie' || item.tmdb?.type === 'tv' ? item.tmdb.type : undefined,
+      tmdbSeason: item.tmdb?.season,
+      imdbId: item.imdb?.id,
+    },
   };
 }
 
@@ -164,9 +170,9 @@ export function normalizeEpisodeServers(servers?: VSMovServer[]): ServerGroupMod
       ? srv.server_data.map((ep) => ({
           name: ep.name ? ep.name.trim() : ep.filename || 'Tập 1',
           slug: ep.slug ? ep.slug.trim() : 'tap-1',
-          filename: ep.filename ? ep.filename.trim() : undefined,
+          ...(ep.filename ? { filename: ep.filename.trim() } : {}),
           embedUrl: ep.link_embed || '',
-          m3u8Url: ep.link_m3u8 || undefined,
+          ...(ep.link_m3u8 ? { m3u8Url: ep.link_m3u8 } : {}),
         }))
       : [];
 
