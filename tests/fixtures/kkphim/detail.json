@@ -1,0 +1,48 @@
+{
+  "status": "success",
+  "message": "",
+  "data": {
+    "APP_DOMAIN_CDN_IMAGE": "https://img.example",
+    "item": {
+      "_id": "kk-series-1",
+      "name": "Bộ phim Fixture",
+      "origin_name": "Fixture Series",
+      "slug": "kk-series-fixture",
+      "thumb_url": "/2026/fixture-thumb.jpg",
+      "poster_url": "https://images.example/fixture-poster.jpg",
+      "year": 2026,
+      "type": "series",
+      "status": "ongoing",
+      "quality": "FHD",
+      "lang": "Vietsub",
+      "episode_current": "2",
+      "episode_total": "8",
+      "time": "45 phút",
+      "tmdb": { "id": 456, "type": "tv", "season": 1, "vote_average": 7.4, "vote_count": 20 },
+      "imdb": { "id": "tt1234567" },
+      "category": [{ "id": "drama", "name": "Tâm lý", "slug": "tam-ly" }],
+      "country": [{ "id": "cn", "name": "Trung Quốc", "slug": "trung-quoc" }],
+      "content": "<p>Một mô tả <strong>được làm sạch</strong>.</p>",
+      "actor": [" Diễn viên Một "],
+      "director": [" Đạo diễn Một "],
+      "trailer_url": "https://video.example/trailer",
+      "showtimes": "Thứ sáu",
+      "chieurap": false,
+      "episodes": [
+        {
+          "server_name": "Vietsub",
+          "server_data": [
+            { "name": "Tập 02", "slug": "tap-02", "filename": "tap-02.m3u8", "link_embed": "https://embed.example/2", "link_m3u8": "https://stream.example/2.m3u8" },
+            { "name": "Tập 01", "slug": "tap-01", "filename": "tap-01.m3u8", "link_embed": "https://embed.example/1", "link_m3u8": "https://stream.example/1.m3u8" }
+          ]
+        },
+        {
+          "server_name": "Lồng Tiếng",
+          "server_data": [
+            { "name": "Tập 1", "slug": "tap-1", "link_embed": "https://embed.example/dub-1" }
+          ]
+        }
+      ]
+    }
+  }
+}
