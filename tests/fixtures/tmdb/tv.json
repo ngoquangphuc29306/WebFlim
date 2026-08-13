@@ -1,0 +1,21 @@
+{
+  "id": 1396,
+  "name": "Rất Nhiều Tập",
+  "original_name": "Breaking Bad",
+  "overview": "Một giáo viên hóa học trở thành nhà sản xuất ma túy.",
+  "poster_path": "/3xnWaLQjelJDDF7LT1WBo6f4BRe.jpg",
+  "backdrop_path": "/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
+  "first_air_date": "2008-01-20",
+  "last_air_date": "2013-09-29",
+  "original_language": "en",
+  "genres": [{ "id": 18, "name": "Chính Kịch" }],
+  "vote_average": 8.9,
+  "vote_count": 15000,
+  "popularity": 80.1,
+  "status": "Ended",
+  "tagline": "All hail the king.",
+  "number_of_seasons": 5,
+  "number_of_episodes": 62,
+  "episode_run_time": [47],
+  "seasons": [{ "id": 3577, "season_number": 1, "name": "Phần 1", "overview": "Khởi đầu.", "air_date": "2008-01-20", "poster_path": "/1yeVJox3rjo2jBKrrihIMj7uoS9.jpg", "episode_count": 7 }]
+}
