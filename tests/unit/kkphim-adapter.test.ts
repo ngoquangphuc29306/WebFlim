@@ -195,9 +195,22 @@ describe('KKPhim provider contract', () => {
 });
 
 describe('provider selection configuration', () => {
-  it('defaults unknown values to VSMov and recognizes explicit KKPhim/canary values', () => {
-    expect(resolveMovieProvider(undefined)).toBe('vsmov');
-    expect(resolveMovieProvider('unexpected')).toBe('vsmov');
+  it.each([
+    [undefined, 'kkphim'],
+    ['', 'kkphim'],
+    ['  ', 'kkphim'],
+    ['kkphim', 'kkphim'],
+    ['KKPHIM', 'kkphim'],
+    [' KkPhIm ', 'kkphim'],
+    ['vsmov', 'vsmov'],
+    ['VSMOV', 'vsmov'],
+    [' Vsmov ', 'vsmov'],
+    ['unexpected', 'kkphim'],
+  ])('resolves %j to %s', (input, expected) => {
+    expect(resolveMovieProvider(input)).toBe(expected);
+  });
+
+  it('recognizes explicit KKPhim/canary values', () => {
     expect(resolveMovieProvider('kkphim')).toBe('kkphim');
     expect(isMovieProviderCanaryEnabled('true')).toBe(true);
     expect(isMovieProviderCanaryEnabled('1')).toBe(true);

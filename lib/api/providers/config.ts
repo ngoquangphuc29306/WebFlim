@@ -4,7 +4,8 @@ export const MOVIE_PROVIDER_ENV = 'PHEVO_MOVIE_PROVIDER';
 export const MOVIE_PROVIDER_CANARY_ENV = 'PHEVO_MOVIE_PROVIDER_CANARY';
 
 export function resolveMovieProvider(value: string | undefined): MovieProviderKey {
-  return value?.trim().toLowerCase() === 'kkphim' ? 'kkphim' : 'vsmov';
+  const normalized = value?.trim().toLowerCase();
+  return normalized === 'vsmov' ? 'vsmov' : 'kkphim';
 }
 
 export function isMovieProviderCanaryEnabled(value: string | undefined): boolean {
