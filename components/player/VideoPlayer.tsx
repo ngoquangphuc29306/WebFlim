@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type Hls from 'hls.js';
+import type Plyr from 'plyr';
 import {
   RefreshCw,
   Maximize2,
@@ -32,6 +33,7 @@ import {
   DIRECT_PLAYER_CAPABILITIES,
 } from '@/lib/utils/player-capabilities';
 import {
+  DEFAULT_PREFERENCES,
   getPlayerPreferences,
   savePlayerPreferences,
   PlayerPreferences,
@@ -43,6 +45,7 @@ import {
 } from './hooks/useHlsPlayer';
 import type { PlayerMode } from './hooks/useHlsPlayer';
 import { getPlayerSourceKey, isEditableKeyboardTarget } from './player-logic';
+import { usePlyrPlayer } from './hooks/usePlyrPlayer';
 
 export type { PlayerMode } from './hooks/useHlsPlayer';
 
@@ -63,6 +66,18 @@ function setVideoPlaybackRate(el: HTMLVideoElement, rate: number) {
 
 function setVideoCurrentTime(el: HTMLVideoElement, time: number) {
   el.currentTime = time;
+}
+
+class VideoElementHandle {
+  private element: HTMLVideoElement | null = null;
+
+  get(): HTMLVideoElement | null {
+    return this.element;
+  }
+
+  set(element: HTMLVideoElement | null): void {
+    this.element = element;
+  }
 }
 
 interface VideoPlayerProps {
@@ -103,16 +118,11 @@ function VideoPlayerInner({
   const [playerMode, setPlayerMode] = useState<PlayerMode>('unavailable');
 
   // Player preferences state
-  const [prefs, setPrefs] = useState<PlayerPreferences>(getPlayerPreferences);
+  // Keep the first render deterministic for SSR. Browser storage is loaded
+  // after hydration so persisted preferences do not change server markup.
+  const [prefs, setPrefs] = useState<PlayerPreferences>(DEFAULT_PREFERENCES);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
-  const [pipSupported] = useState<boolean>(() => {
-    return (
-      typeof document !== 'undefined' &&
-      'pictureInPictureEnabled' in document &&
-      Boolean(document.pictureInPictureEnabled) &&
-      'requestPictureInPicture' in HTMLVideoElement.prototype
-    );
-  });
+  const [pipSupported, setPipSupported] = useState(false);
 
   // Auto-next state
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
@@ -127,14 +137,15 @@ function VideoPlayerInner({
   const seekTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!useDirectStream || !videoRef.current) return;
+    if (!useDirectStream || !videoHandle.get()) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const width = rect.width;
-    const now = Date.now();
+    const now = e.timeStamp;
 
     if (now - lastTapRef.current.time < 350 && Math.abs(clickX - lastTapRef.current.x) < 80) {
-      const v = videoRef.current;
+      const v = videoHandle.get();
+      if (!v) return;
       if (clickX < width * 0.4) {
         if (Number.isFinite(v.duration)) {
           v.currentTime = Math.max(0, v.currentTime - 10);
@@ -158,10 +169,97 @@ function VideoPlayerInner({
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Plyr wraps and mutates its target element. Keep that DOM subtree outside
+  // React's child reconciliation while retaining the same video element refs.
+  const videoHostRef = useRef<HTMLDivElement | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoHandle] = useState(() => new VideoElementHandle());
+  const getVideoElement = useCallback(() => {
+    if (!videoReady) return null;
+    return videoHandle.get();
+  }, [videoHandle, videoReady]);
   const hlsRef = useRef<Hls | null>(null);
+  const plyrRef = useRef<Plyr | null>(null);
+  const directVideoListenersCleanupRef = useRef<(() => void) | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
   const hasResumedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setPrefs(getPlayerPreferences());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const supported =
+        'pictureInPictureEnabled' in document &&
+        Boolean(document.pictureInPictureEnabled) &&
+        'requestPictureInPicture' in HTMLVideoElement.prototype;
+      setPipSupported(supported);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const disposeDirectBackend = useCallback(() => {
+    sourceGenerationRef.current += 1;
+
+    const video = videoHandle.get();
+    video?.pause();
+
+    if (plyrRef.current) {
+      plyrRef.current.destroy();
+      plyrRef.current = null;
+    }
+
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    directVideoListenersCleanupRef.current?.();
+    directVideoListenersCleanupRef.current = null;
+
+    if (video) {
+      video.removeAttribute('src');
+      video.load();
+      videoHandle.set(null);
+      setVideoReady(false);
+      video.remove();
+    }
+  }, [setVideoReady, videoHandle]);
+
+  useLayoutEffect(() => {
+    const host = videoHostRef.current;
+    if (!host) return;
+
+    const video = document.createElement('video');
+    video.controls = true;
+    video.autoplay = true;
+    video.className = 'w-full h-full object-contain';
+    host.appendChild(video);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled && host.isConnected) {
+        videoHandle.set(video);
+        setVideoReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      disposeDirectBackend();
+      video.remove();
+    };
+  }, [disposeDirectBackend, setVideoReady, videoHandle]);
 
   // Recovery & Guard Refs
   const networkRecoveryCountRef = useRef<number>(0);
@@ -231,15 +329,15 @@ function VideoPlayerInner({
 
   const handleReplayCurrentEpisode = () => {
     cancelAutoNext();
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
+    if (videoHandle.get()) {
+      setVideoCurrentTime(videoHandle.get()!, 0);
+      videoHandle.get()!.play().catch(() => {});
     }
   };
 
   // Picture-in-Picture event listeners
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoHandle.get();
     if (!video) return;
 
     const handleEnterPiP = () => setIsInPiP(true);
@@ -280,10 +378,7 @@ function VideoPlayerInner({
       console.warn(`[VideoPlayer] Fallback to embed triggered: ${reason}`);
     }
 
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
+    disposeDirectBackend();
 
     setUseDirectStream(false);
     if (embedUrl) {
@@ -294,7 +389,7 @@ function VideoPlayerInner({
       toast.error('Nguồn phát không khả dụng cho tập này.');
     }
     setLoading(true);
-  }, [embedUrl]);
+  }, [disposeDirectBackend, embedUrl]);
 
   // Record watch history on mount/source init
   useEffect(() => {
@@ -316,7 +411,7 @@ function VideoPlayerInner({
     useDirectStream,
     m3u8Url,
     embedUrl,
-    videoRef,
+    getVideoElement,
     hlsRef,
     sourceGenerationRef,
     networkRecoveryCountRef,
@@ -327,9 +422,47 @@ function VideoPlayerInner({
     fallbackToEmbed,
   });
 
+  usePlyrPlayer({
+    enabled: useDirectStream && Boolean(m3u8Url),
+    getVideoElement,
+    plyrRef,
+  });
+
+  // Keep PHEVO preferences synchronized with Plyr's underlying video element.
+  useEffect(() => {
+    const video = videoHandle.get();
+    if (!video || !useDirectStream) return;
+
+    const handleRateChange = () => {
+      if (ALLOWED_PLAYBACK_RATES.includes(video.playbackRate)) {
+        setPrefs((previous) => {
+          if (previous.playbackRate === video.playbackRate) return previous;
+          const next = { ...previous, playbackRate: video.playbackRate };
+          savePlayerPreferences(next);
+          return next;
+        });
+      }
+    };
+    const handleVolumeChange = () => {
+      setPrefs((previous) => {
+        const next = { ...previous, volume: video.volume, muted: video.muted };
+        if (next.volume === previous.volume && next.muted === previous.muted) return previous;
+        savePlayerPreferences(next);
+        return next;
+      });
+    };
+
+    video.addEventListener('ratechange', handleRateChange);
+    video.addEventListener('volumechange', handleVolumeChange);
+    return () => {
+      video.removeEventListener('ratechange', handleRateChange);
+      video.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, [useDirectStream]);
+
   // Helper to save current video progress
   const saveCurrentVideoProgress = (force: boolean = false, isEnded: boolean = false) => {
-    const v = videoRef.current;
+    const v = videoHandle.get();
     const p = propsRef.current;
     if (!v || !p.useDirectStream || !p.movieSlug || !p.episodeSlug) return;
     if (!Number.isFinite(v.duration) || v.duration <= 0) return;
@@ -358,7 +491,7 @@ function VideoPlayerInner({
   // Handle video metadata loaded
   const handleLoadedMetadata = () => {
     setLoading(false);
-    const v = videoRef.current;
+    const v = videoHandle.get();
     const p = propsRef.current;
     if (!v || !p.movieSlug || !p.episodeSlug) return;
 
@@ -453,6 +586,37 @@ function VideoPlayerInner({
     }
   };
 
+  // Bind React-owned behavior to the imperatively created video element.
+  useEffect(() => {
+    const video = videoHandle.get();
+    if (!video) return;
+
+    const handleLoadedDataEvent = () => setLoading(false);
+    video.addEventListener('loadeddata', handleLoadedDataEvent);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('ended', handleEnded);
+    video.addEventListener('error', handleDirectError);
+
+    const cleanup = () => {
+      video.removeEventListener('loadeddata', handleLoadedDataEvent);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('error', handleDirectError);
+    };
+
+    directVideoListenersCleanupRef.current = cleanup;
+    return () => {
+      cleanup();
+      if (directVideoListenersCleanupRef.current === cleanup) {
+        directVideoListenersCleanupRef.current = null;
+      }
+    };
+  }, [handleLoadedMetadata, handleTimeUpdate, handlePause, handleEnded, handleDirectError]);
+
   // Page visibility & pagehide listener to save progress when app is backgrounded/tab switched
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -489,7 +653,7 @@ function VideoPlayerInner({
       const isPlayerFocused =
         containerRef.current === document.activeElement ||
         (containerRef.current && containerRef.current.contains(document.activeElement)) ||
-        videoRef.current === document.activeElement;
+        videoHandle.get() === document.activeElement;
 
       // Global-safe shortcuts
       if (e.key === 'f' || e.key === 'F') {
@@ -506,8 +670,8 @@ function VideoPlayerInner({
         return;
       }
 
-      if (!useDirectStream || !videoRef.current) return;
-      const v = videoRef.current;
+      if (!useDirectStream || !videoHandle.get()) return;
+      const v = videoHandle.get()!;
 
       switch (e.key) {
         case ' ':
@@ -606,8 +770,8 @@ function VideoPlayerInner({
 
   // Preferences controls
   const handleVolumeChange = (newVol: number) => {
-    if (videoRef.current) {
-      setVideoVolume(videoRef.current, newVol, newVol === 0);
+    if (videoHandle.get()) {
+      setVideoVolume(videoHandle.get()!, newVol, newVol === 0);
     }
     const updated = savePlayerPreferences({ volume: newVol, muted: newVol === 0 });
     setPrefs(updated);
@@ -615,16 +779,16 @@ function VideoPlayerInner({
 
   const handleMuteToggle = () => {
     const newMuted = !prefs.muted;
-    if (videoRef.current) {
-      setVideoVolume(videoRef.current, videoRef.current.volume, newMuted);
+    if (videoHandle.get()) {
+      setVideoVolume(videoHandle.get()!, videoHandle.get()!.volume, newMuted);
     }
     const updated = savePlayerPreferences({ muted: newMuted });
     setPrefs(updated);
   };
 
   const handleSpeedSelect = (rate: number) => {
-    if (videoRef.current) {
-      setVideoPlaybackRate(videoRef.current, rate);
+    if (videoHandle.get()) {
+      setVideoPlaybackRate(videoHandle.get()!, rate);
     }
     const updated = savePlayerPreferences({ playbackRate: rate });
     setPrefs(updated);
@@ -637,11 +801,11 @@ function VideoPlayerInner({
   };
 
   const handleTogglePiP = () => {
-    if (!videoRef.current || !pipSupported) return;
+    if (!videoHandle.get() || !pipSupported) return;
     if (document.pictureInPictureElement) {
       document.exitPictureInPicture().catch(() => {});
     } else {
-      videoRef.current.requestPictureInPicture().catch(() => {});
+      videoHandle.get()!.requestPictureInPicture().catch(() => {});
     }
   };
 
@@ -655,8 +819,8 @@ function VideoPlayerInner({
     fallbackTriggeredRef.current = false;
     setUseDirectStream(Boolean(m3u8Url));
     setIframeKey((prev) => prev + 1);
-    if (videoRef.current) {
-      videoRef.current.load();
+    if (videoHandle.get()) {
+      videoHandle.get()!.load();
     }
   };
 
@@ -797,20 +961,9 @@ function VideoPlayerInner({
           </div>
         )}
 
-        {/* Player rendering: Direct Video or Embedded iFrame */}
+        {/* Only one playback backend is mounted at a time. */}
         {useDirectStream && m3u8Url ? (
-          <video
-            ref={videoRef}
-            controls
-            autoPlay
-            className="w-full h-full object-contain"
-            onLoadedData={() => setLoading(false)}
-            onLoadedMetadata={handleLoadedMetadata}
-            onTimeUpdate={handleTimeUpdate}
-            onPause={handlePause}
-            onEnded={handleEnded}
-            onError={handleDirectError}
-          />
+          <div ref={videoHostRef} className="w-full h-full" />
         ) : embedUrl ? (
           <iframe
             key={iframeKey}
@@ -821,12 +974,12 @@ function VideoPlayerInner({
             allowFullScreen
             onLoad={() => setLoading(false)}
           />
-        ) : (
+        ) : !useDirectStream || !m3u8Url ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#101010] text-[#a3a3a3]">
             <ShieldAlert className="w-10 h-10 text-[#e50914]" />
             <p className="text-sm font-medium">Không tìm thấy luồng phát cho tập này.</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Control & Info Bar under Player */}
