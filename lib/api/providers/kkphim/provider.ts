@@ -1,4 +1,4 @@
-import type { CatalogRequest } from '@/types/movie';
+import type { CatalogRequest, MovieBrowseFilter, MovieProviderCapabilities } from '@/types/movie';
 import type { MovieProvider, MovieListResult, MovieListWithTitleResult, MovieDetailResult } from '@/lib/api/providers/movie-provider';
 import {
   asPage,
@@ -65,6 +65,13 @@ function mapTaxonomy(items: KkPhimTaxonomyDto[] | null | undefined) {
 
 export class KkPhimMovieProvider implements MovieProvider {
   readonly key = 'kkphim' as const;
+  readonly capabilities: MovieProviderCapabilities = {
+    combinedBrowseFilters: true,
+    yearRange: true,
+    languageFilter: true,
+    sorting: true,
+    browseTypes: ['phim-le', 'phim-bo', 'tv-shows', 'hoat-hinh'],
+  };
 
   constructor(private readonly client: KkPhimClientContract = new KkPhimClient()) {}
 
@@ -180,6 +187,17 @@ export class KkPhimMovieProvider implements MovieProvider {
       }
     }
     return failedDetail(lastError ?? providerErrorForKkResponse('KKPhim movie was not found', 'NOT_FOUND'));
+  }
+
+  async browseMovies(filter: MovieBrowseFilter): Promise<MovieListWithTitleResult> {
+    const response = await this.client.browse({ ...filter, page: asPage(filter.page) });
+    if (!response.data) {
+      return {
+        ...failedList(response.error ?? providerErrorForKkResponse('KKPhim returned no browse data')),
+        title: 'Khám phá phim',
+      };
+    }
+    return { ...mapKkListResponse(response.data), title: 'Khám phá phim', error: null };
   }
 
   async getCatalogMovies(request: CatalogRequest): Promise<MovieListWithTitleResult> {

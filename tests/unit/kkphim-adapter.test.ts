@@ -6,7 +6,7 @@ import type {
   KkPhimListResponseDto,
 } from '@/types/kkphim';
 import type { KkPhimClientContract, KkPhimRequestResult } from '@/lib/api/providers/kkphim/client';
-import { KkPhimClient } from '@/lib/api/providers/kkphim/client';
+import { buildKkPhimBrowseQuery, KkPhimClient } from '@/lib/api/providers/kkphim/client';
 import {
   mapKkDetailResponse,
   mapKkListResponse,
@@ -67,6 +67,15 @@ describe('KKPhim mapping boundary', () => {
 });
 
 describe('KKPhim request reliability', () => {
+  it('serializes a combined provider-native browse request without losing filters', () => {
+    expect(buildKkPhimBrowseQuery({
+      type: 'phim-bo', genre: 'hanh-dong', country: 'han-quoc', yearFrom: 2020, yearTo: 2024,
+      language: 'vietsub', sort: 'updated', order: 'desc', page: 2,
+    })).toEqual({
+      page: 2, limit: undefined, category: 'hanh-dong', country: 'han-quoc', year: '2020,2024',
+      sort_lang: 'vietsub', sort_field: 'modified.time', sort_type: 'desc',
+    });
+  });
   it('performs one request for a successful JSON response and preserves revalidation', async () => {
     const fetchMock = vi.fn<Fetcher>().mockResolvedValue(fetchResponse(kkListFixture));
     const client = new KkPhimClient(fetchMock);
@@ -130,12 +139,31 @@ describe('KKPhim provider contract', () => {
       countries: vi.fn().mockResolvedValue({ data: null, error: null }),
       years: vi.fn().mockResolvedValue({ data: null, error: null }),
       detail: vi.fn().mockResolvedValue({ data: null, error: null }),
+      browse: vi.fn().mockResolvedValue(listResult),
     };
     const provider = new KkPhimMovieProvider(client);
 
     await expect(provider.getMovieListBySlug('hoat-hinh')).resolves.toMatchObject({ items: [{ slug: 'kkphim-fixture' }] });
     await expect(provider.getMovieListBySlug('subteam')).resolves.toMatchObject({ items: [], error: { type: 'INVALID_REQUEST' } });
     expect(client.listByType).toHaveBeenCalledWith('hoat-hinh', 1);
+  });
+
+  it('passes the full normalized browse filter through the adapter in one provider request', async () => {
+    const listResult: KkPhimRequestResult<KkPhimListResponseDto> = { data: kkListFixture as KkPhimListResponseDto, error: null };
+    const browse = vi.fn().mockResolvedValue(listResult);
+    const client: KkPhimClientContract = {
+      list: vi.fn(), listByType: vi.fn(), byGenre: vi.fn(), byCountry: vi.fn(), byYear: vi.fn(), search: vi.fn(),
+      genres: vi.fn(), countries: vi.fn(), years: vi.fn(), detail: vi.fn(), browse,
+    };
+    const provider = new KkPhimMovieProvider(client);
+    const filter = {
+      type: 'phim-bo' as const, genre: 'hanh-dong', country: 'han-quoc', year: 2024,
+      language: 'vietsub' as const, sort: 'updated' as const, order: 'desc' as const, page: 2,
+    };
+
+    await expect(provider.browseMovies(filter)).resolves.toMatchObject({ title: 'Khám phá phim', items: [{ slug: 'kkphim-fixture' }] });
+    expect(browse).toHaveBeenCalledTimes(1);
+    expect(browse).toHaveBeenCalledWith(filter);
   });
 
   it('uses one explicit movie alias attempt and preserves the public requested slug', async () => {
@@ -153,6 +181,7 @@ describe('KKPhim provider contract', () => {
       byYear: vi.fn().mockResolvedValue(emptyList), search: vi.fn().mockResolvedValue(emptyList),
       genres: vi.fn().mockResolvedValue({ data: null, error: null }), countries: vi.fn().mockResolvedValue({ data: null, error: null }),
       years: vi.fn().mockResolvedValue({ data: null, error: null }), detail,
+      browse: vi.fn().mockResolvedValue(emptyList),
     };
     const provider = new KkPhimMovieProvider(client);
     const requested = Object.keys(KKPHIM_SLUG_ALIASES)[0];

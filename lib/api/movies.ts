@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import type { CatalogRequest } from '@/types/movie';
+import type { CatalogRequest, MovieBrowseFilter } from '@/types/movie';
 import { configuredCanaryEnabled, configuredMovieProvider, resolveMovieProvider } from '@/lib/api/providers/config';
 import type { HomepageData, MovieDetailResult, MovieListResult, MovieListWithTitleResult } from '@/lib/api/providers/movie-provider';
 import { KkPhimMovieProvider } from '@/lib/api/providers/kkphim/provider';
@@ -17,6 +17,7 @@ const canaryEnabled = configuredCanaryEnabled();
 
 export const activeMovieProvider = primaryProvider.key;
 export const activeMovieProviderCanary = canaryEnabled;
+export const activeMovieProviderCapabilities = primaryProvider.capabilities;
 
 function shadowProvider(): MovieProvider {
   return primaryProvider.key === 'vsmov' ? providers.kkphim : providers.vsmov;
@@ -102,6 +103,11 @@ export function getCatalogMovies(request: CatalogRequest): Promise<MovieListWith
     }
     return result;
   });
+}
+
+/** Provider-neutral entry point for /kham-pha advanced browsing. */
+export function browseMovies(filter: MovieBrowseFilter): Promise<MovieListWithTitleResult> {
+  return primaryProvider.browseMovies(filter);
 }
 
 export const getHomepageData = cache(async (): Promise<HomepageData> => {
