@@ -3,6 +3,42 @@ export interface TmdbGenreDto {
   name?: string | null;
 }
 
+export interface TmdbCastDto {
+  id?: number | null;
+  name?: string | null;
+  character?: string | null;
+  profile_path?: string | null;
+  order?: number | null;
+}
+
+export interface TmdbCrewDto {
+  id?: number | null;
+  name?: string | null;
+  department?: string | null;
+  job?: string | null;
+  profile_path?: string | null;
+  order?: number | null;
+}
+
+export interface TmdbCreditsDto {
+  cast?: TmdbCastDto[] | null;
+  crew?: TmdbCrewDto[] | null;
+}
+
+export interface TmdbVideoDto {
+  id?: string | null;
+  key?: string | null;
+  name?: string | null;
+  site?: string | null;
+  type?: string | null;
+  official?: boolean | null;
+  published_at?: string | null;
+}
+
+export interface TmdbVideosDto {
+  results?: TmdbVideoDto[] | null;
+}
+
 export interface TmdbSeasonSummaryDto {
   id?: number | null;
   season_number?: number | null;
@@ -29,6 +65,8 @@ export interface TmdbMovieDto {
   runtime?: number | null;
   status?: string | null;
   tagline?: string | null;
+  credits?: TmdbCreditsDto | null;
+  videos?: TmdbVideosDto | null;
 }
 
 export interface TmdbTvDto {
@@ -47,6 +85,9 @@ export interface TmdbTvDto {
   popularity?: number | null;
   status?: string | null;
   tagline?: string | null;
+  created_by?: TmdbCrewDto[] | null;
+  credits?: TmdbCreditsDto | null;
+  videos?: TmdbVideosDto | null;
   number_of_seasons?: number | null;
   number_of_episodes?: number | null;
   episode_run_time?: number[] | null;

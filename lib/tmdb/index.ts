@@ -8,6 +8,12 @@ export {
   type TmdbMetadataBundle,
   type TmdbMetadataOptions,
 } from '@/lib/tmdb/service';
+export {
+  enrichMovieDetail,
+  getEnrichedMovieDetail,
+  isTmdbIdentityTrusted,
+  toMovieDetailModel,
+} from '@/lib/tmdb/enrichment';
 export { buildTmdbImageUrl, type TmdbImagePreset } from '@/lib/tmdb/images';
 export type { TmdbError, TmdbErrorCode, TmdbResult } from '@/lib/tmdb/errors';
 export type {
@@ -19,4 +25,14 @@ export type {
   TmdbMediaType,
   TmdbSeasonMetadata,
   TmdbSeasonSummary,
+  EnrichedMovieDetail,
+  EnrichedMovieDetailModel,
+  TmdbCastMember,
+  TmdbCastPresentation,
+  TmdbCrewMember,
+  TmdbCrewPresentation,
+  TmdbCredits,
+  TmdbDetailPresentation,
+  TmdbTrailerPresentation,
+  TmdbVideo,
 } from '@/types/tmdb';

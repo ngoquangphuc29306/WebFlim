@@ -81,6 +81,9 @@ export default function Footer() {
             <p className="text-xs text-[#8c8c8c] leading-relaxed">
               Tất cả nội dung được tổng hợp tự động từ các dịch vụ phát trực tuyến công cộng. Chúng tôi không lưu trữ bất kỳ file phim nào trên máy chủ.
             </p>
+            <p className="text-xs text-[#8c8c8c] leading-relaxed">
+              This product uses the <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer noopener" className="text-[#d4d4d4] hover:text-white underline">TMDB API</a> but is not endorsed or certified by TMDB.
+            </p>
             <div className="flex items-center gap-2 pt-2 text-xs text-[#a3a3a3]">
               <Shield className="w-4 h-4 text-[#e50914]" />
               <span>Dữ liệu chính xác & an toàn</span>

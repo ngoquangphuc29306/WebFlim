@@ -5,6 +5,38 @@ export interface TmdbGenre {
   name: string;
 }
 
+export interface TmdbCastMember {
+  id: number;
+  name: string;
+  character?: string;
+  profilePath?: string;
+  order?: number;
+}
+
+export interface TmdbCrewMember {
+  id: number;
+  name: string;
+  department?: string;
+  job?: string;
+  profilePath?: string;
+  order?: number;
+}
+
+export interface TmdbCredits {
+  cast: TmdbCastMember[];
+  crew: TmdbCrewMember[];
+}
+
+export interface TmdbVideo {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
+  publishedAt?: string;
+}
+
 export interface TmdbSeasonSummary {
   id: number;
   seasonNumber: number;
@@ -58,6 +90,9 @@ export interface TmdbMediaMetadata {
   runtimeMinutes?: number;
   status?: string;
   tagline?: string;
+  credits?: TmdbCredits;
+  videos?: TmdbVideo[];
+  createdBy?: TmdbCrewMember[];
   numberOfSeasons?: number;
   numberOfEpisodes?: number;
   episodeRunTimes?: number[];
@@ -74,3 +109,65 @@ export interface TmdbImageConfiguration {
   stillSizes: string[];
   logoSizes: string[];
 }
+
+export interface TmdbCastPresentation {
+  id: number;
+  name: string;
+  character?: string;
+  profileUrl?: string;
+  order?: number;
+}
+
+export interface TmdbCrewPresentation {
+  id: number;
+  name: string;
+  job?: string;
+  profileUrl?: string;
+}
+
+export interface TmdbTrailerPresentation {
+  site: 'YouTube';
+  key: string;
+  name: string;
+  official: boolean;
+  type: string;
+  url: string;
+}
+
+export interface TmdbDetailPresentation {
+  title: string;
+  originalTitle?: string;
+  overview?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  releaseDate?: string;
+  year?: number;
+  runtimeMinutes?: number;
+  genres: TmdbGenre[];
+  voteAverage?: number;
+  voteCount?: number;
+  ratingSource: 'tmdb' | 'provider';
+  cast: TmdbCastPresentation[];
+  directors: TmdbCrewPresentation[];
+  creators: TmdbCrewPresentation[];
+  trailer?: TmdbTrailerPresentation;
+  season?: TmdbSeasonMetadata;
+  overviewSource: 'tmdb-vi-VN' | 'tmdb-en-US' | 'provider';
+}
+
+export interface EnrichedMovieDetail {
+  provider: import('@/types/movie').MovieDetailModel;
+  display: TmdbDetailPresentation;
+  enrichment: {
+    source: 'tmdb' | 'provider';
+    tmdbAvailable: boolean;
+    tmdbId?: string;
+    overviewSource: TmdbDetailPresentation['overviewSource'];
+    seasonAvailable: boolean;
+  };
+}
+
+export type EnrichedMovieDetailModel = import('@/types/movie').MovieDetailModel & {
+  tmdbPresentation?: TmdbDetailPresentation;
+  enrichment?: EnrichedMovieDetail['enrichment'];
+};
