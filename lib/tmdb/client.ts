@@ -15,6 +15,8 @@ type Sleeper = (milliseconds: number) => Promise<void>;
 
 export interface TmdbRequestOptions {
   signal?: AbortSignal;
+  language?: string;
+  appendToResponse?: string[];
 }
 
 export interface TmdbClientContract {
@@ -136,7 +138,10 @@ export class TmdbClient implements TmdbClientContract {
     }
 
     const url = new URL(`${this.baseUrl}/${path.replace(/^\//, '')}`);
-    url.searchParams.set('language', this.language);
+    url.searchParams.set('language', options?.language?.trim() || this.language);
+    if (options?.appendToResponse && options.appendToResponse.length > 0) {
+      url.searchParams.set('append_to_response', options.appendToResponse.join(','));
+    }
     let lastError: TmdbError | null = null;
 
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {

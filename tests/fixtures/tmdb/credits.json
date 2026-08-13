@@ -1,0 +1,10 @@
+{
+  "cast": [
+    { "id": 1, "name": "Diễn viên Một", "character": "Nhân vật Một", "profile_path": "/actor-one.jpg", "order": 0 },
+    { "id": 2, "name": "Diễn viên Hai", "character": "Nhân vật Hai", "profile_path": null, "order": 1 }
+  ],
+  "crew": [
+    { "id": 3, "name": "Đạo diễn Một", "department": "Directing", "job": "Director", "profile_path": "/director-one.jpg" },
+    { "id": 4, "name": "Biên kịch Một", "department": "Writing", "job": "Writer", "profile_path": null }
+  ]
+}

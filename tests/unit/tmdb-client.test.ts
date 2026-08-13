@@ -34,6 +34,17 @@ describe('TmdbClient', () => {
     expect(init?.next).toEqual({ revalidate: TMDB_DETAILS_REVALIDATE_SECONDS });
   });
 
+  it('uses one official detail request bundle for credits and videos', async () => {
+    const fetcher = vi.fn<Fetcher>().mockResolvedValue(jsonResponse(movieFixture));
+    const client = new TmdbClient({ fetcher, token: 'test-only-token' });
+
+    await client.getMovie('603', { appendToResponse: ['credits', 'videos'] });
+
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe(
+      'https://api.themoviedb.org/3/movie/603?language=vi-VN&append_to_response=credits%2Cvideos'
+    );
+  });
+
   it('routes TV and season identities to their official endpoints and caches configuration separately', async () => {
     const fetcher = vi.fn<Fetcher>()
       .mockResolvedValueOnce(jsonResponse(tvFixture))

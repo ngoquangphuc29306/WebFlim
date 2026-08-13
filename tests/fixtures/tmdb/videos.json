@@ -1,0 +1,7 @@
+{
+  "results": [
+    { "id": "teaser", "key": "teaser-key", "name": "Teaser", "site": "YouTube", "type": "Teaser", "official": true },
+    { "id": "trailer", "key": "trailer-key", "name": "Official Trailer", "site": "YouTube", "type": "Trailer", "official": true },
+    { "id": "other", "key": "other-key", "name": "Trailer khác", "site": "Vimeo", "type": "Trailer", "official": true }
+  ]
+}

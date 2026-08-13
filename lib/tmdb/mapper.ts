@@ -1,5 +1,7 @@
 import type {
+  TmdbCastDto,
   TmdbConfigurationDto,
+  TmdbCrewDto,
   TmdbGenreDto,
   TmdbMovieDto,
   TmdbSeasonDto,
@@ -12,8 +14,12 @@ import type {
   TmdbGenre,
   TmdbImageConfiguration,
   TmdbMediaMetadata,
+  TmdbCastMember,
+  TmdbCrewMember,
+  TmdbCredits,
   TmdbSeasonMetadata,
   TmdbSeasonSummary,
+  TmdbVideo,
 } from '@/types/tmdb';
 
 function text(value: unknown): string | undefined {
@@ -65,6 +71,65 @@ function numberList(values: number[] | null | undefined): number[] | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function mapCast(items: TmdbCastDto[] | null | undefined): TmdbCastMember[] {
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item) => {
+    const id = positiveInteger(item.id);
+    const name = text(item.name);
+    if (!id || !name) return [];
+    return [{
+      id,
+      name,
+      character: text(item.character),
+      profilePath: path(item.profile_path),
+      order: finiteNumber(item.order),
+    }];
+  }).sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER));
+}
+
+function mapCrew(items: TmdbCrewDto[] | null | undefined): TmdbCrewMember[] {
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item) => {
+    const id = positiveInteger(item.id);
+    const name = text(item.name);
+    if (!id || !name) return [];
+    return [{
+      id,
+      name,
+      department: text(item.department),
+      job: text(item.job),
+      profilePath: path(item.profile_path),
+      order: finiteNumber(item.order),
+    }];
+  });
+}
+
+function mapCredits(credits: TmdbMovieDto['credits']): TmdbCredits | undefined {
+  if (!credits) return undefined;
+  return { cast: mapCast(credits.cast), crew: mapCrew(credits.crew) };
+}
+
+function mapVideos(videos: TmdbMovieDto['videos']): TmdbVideo[] | undefined {
+  if (!Array.isArray(videos?.results)) return undefined;
+  return videos.results.flatMap((item) => {
+    const id = text(item.id);
+    const key = text(item.key);
+    const name = text(item.name);
+    const site = text(item.site);
+    const type = text(item.type);
+    if (!id || !key || !name || !site || !type) return [];
+    return [{
+      id,
+      key,
+      name,
+      site,
+      type,
+      official: item.official === true,
+      publishedAt: text(item.published_at),
+    }];
+  });
+}
+
 export function mapTmdbMovie(dto: TmdbMovieDto): TmdbMediaMetadata | null {
   const id = positiveInteger(dto.id);
   const title = text(dto.title) ?? text(dto.original_title);
@@ -86,6 +151,8 @@ export function mapTmdbMovie(dto: TmdbMovieDto): TmdbMediaMetadata | null {
     runtimeMinutes: positiveInteger(dto.runtime),
     status: text(dto.status),
     tagline: text(dto.tagline),
+    credits: mapCredits(dto.credits),
+    videos: mapVideos(dto.videos),
   };
 }
 
@@ -110,6 +177,9 @@ export function mapTmdbTv(dto: TmdbTvDto): TmdbMediaMetadata | null {
     popularity: finiteNumber(dto.popularity),
     status: text(dto.status),
     tagline: text(dto.tagline),
+    createdBy: mapCrew(dto.created_by),
+    credits: mapCredits(dto.credits),
+    videos: mapVideos(dto.videos),
     numberOfSeasons: positiveInteger(dto.number_of_seasons),
     numberOfEpisodes: positiveInteger(dto.number_of_episodes),
     episodeRunTimes: numberList(dto.episode_run_time),
