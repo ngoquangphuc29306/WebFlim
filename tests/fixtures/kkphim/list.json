@@ -1,0 +1,30 @@
+{
+  "status": "success",
+  "message": "",
+  "data": {
+    "items": [
+      {
+        "_id": "kk-1",
+        "name": "KKPhim Fixture",
+        "origin_name": "KK Fixture",
+        "slug": "kkphim-fixture",
+        "thumb_url": "/2026/kk-thumb.jpg",
+        "poster_url": "https://images.example/kk-poster.jpg",
+        "year": 2026,
+        "type": "single",
+        "tmdb": { "id": 123, "type": "movie", "vote_average": 8.2, "vote_count": 10 },
+        "category": [{ "id": "action", "name": "Hành động", "slug": "hanh-dong" }],
+        "country": [{ "id": "kr", "name": "Hàn Quốc", "slug": "han-quoc" }]
+      }
+    ],
+    "params": {
+      "pagination": {
+        "totalItems": 49,
+        "totalItemsPerPage": 24,
+        "currentPage": 1,
+        "pageRanges": 3
+      }
+    },
+    "APP_DOMAIN_CDN_IMAGE": "https://img.example"
+  }
+}
