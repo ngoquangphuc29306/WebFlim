@@ -1,5 +1,33 @@
 export type TmdbMediaType = 'movie' | 'tv';
 
+/**
+ * Lightweight, provider-neutral discovery metadata. It intentionally has no
+ * playback fields: a provider availability resolver must supply the public
+ * PHEVO slug before it can become a navigable card.
+ */
+export interface TmdbDiscoveryCandidate {
+  tmdbId: number;
+  mediaType: TmdbMediaType;
+  title: string;
+  originalTitle?: string;
+  overview?: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  year?: number;
+  voteAverage?: number;
+  voteCount?: number;
+  genreIds?: number[];
+  popularity?: number;
+}
+
+export interface TmdbDiscoveryPage {
+  candidates: TmdbDiscoveryCandidate[];
+  page: number;
+  totalPages: number;
+  totalResults: number;
+}
+
 export interface TmdbGenre {
   id: number;
   name: string;

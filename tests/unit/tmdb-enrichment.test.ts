@@ -42,6 +42,11 @@ function clientWithMovieResponses(...responses: unknown[]): TmdbClientContract {
     getTv: vi.fn().mockResolvedValue({ data: null, error: { code: 'NOT_FOUND', message: 'not used' } }),
     getTvSeason: vi.fn().mockResolvedValue({ data: null, error: null }),
     getConfiguration: vi.fn().mockResolvedValue({ data: null, error: null }),
+    getTrending: vi.fn().mockResolvedValue({ data: null, error: null }),
+    getPopular: vi.fn().mockResolvedValue({ data: null, error: null }),
+    getTopRated: vi.fn().mockResolvedValue({ data: null, error: null }),
+    getRecommendations: vi.fn().mockResolvedValue({ data: null, error: null }),
+    getSimilar: vi.fn().mockResolvedValue({ data: null, error: null }),
   };
 }
 

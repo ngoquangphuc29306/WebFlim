@@ -59,6 +59,11 @@ describe('TmdbMetadataService identity routing', () => {
       getTv: vi.fn().mockResolvedValue({ data: tvFixture, error: null }),
       getTvSeason: vi.fn().mockResolvedValue({ data: seasonFixture, error: null }),
       getConfiguration: vi.fn().mockResolvedValue({ data: configurationFixture, error: null }),
+      getTrending: vi.fn().mockResolvedValue({ data: null, error: null }),
+      getPopular: vi.fn().mockResolvedValue({ data: null, error: null }),
+      getTopRated: vi.fn().mockResolvedValue({ data: null, error: null }),
+      getRecommendations: vi.fn().mockResolvedValue({ data: null, error: null }),
+      getSimilar: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
   }
 

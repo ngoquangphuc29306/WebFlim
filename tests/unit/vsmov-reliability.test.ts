@@ -208,6 +208,34 @@ describe('VSMov detail fallback reliability', () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('phimapi.com');
   });
 
+  it('does not log an intermediate VSMov 404 when the PhimAPI fallback succeeds', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (String(input).includes('vsmov.com')) return jsonResponse({ status: false }, 404);
+      return jsonResponse(detailResponse('fallback-success'));
+    });
+
+    const result = await getMovieDetail('fallback-success');
+
+    expect(result.movie?.slug).toBe('fallback-success');
+    expect(console.error).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('logs the final detail failure after the fallback chain is exhausted', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ status: false }, 404));
+
+    const result = await getMovieDetail('definitely-not-a-real-movie');
+
+    expect(result.movie).toBeNull();
+    expect(result.error).toMatchObject({ type: 'NOT_FOUND', statusCode: 404 });
+    expect(console.error).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith(
+      '[VSMov API Error]',
+      expect.stringContaining('https://phimapi.com/phim/definitely-not-a-real-movie')
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('bounds alias fallback attempts and cannot recurse forever', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: false }, 404));
 
