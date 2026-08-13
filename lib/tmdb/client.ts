@@ -1,6 +1,7 @@
 import 'server-only';
 
-import type { TmdbConfigurationDto, TmdbMovieDto, TmdbSeasonDto, TmdbTvDto } from '@/lib/tmdb/dto';
+import type { TmdbConfigurationDto, TmdbDiscoveryPageDto, TmdbMovieDto, TmdbSeasonDto, TmdbTvDto } from '@/lib/tmdb/dto';
+import type { TmdbMediaType } from '@/types/tmdb';
 import { tmdbFailure, type TmdbError, type TmdbResult } from '@/lib/tmdb/errors';
 
 export const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
@@ -8,6 +9,10 @@ export const DEFAULT_TMDB_TIMEOUT_MS = 10_000;
 export const MAX_TMDB_ATTEMPTS = 2;
 export const TMDB_DETAILS_REVALIDATE_SECONDS = 21_600;
 export const TMDB_CONFIGURATION_REVALIDATE_SECONDS = 604_800;
+export const TMDB_TRENDING_REVALIDATE_SECONDS = 900;
+export const TMDB_POPULAR_REVALIDATE_SECONDS = 3_600;
+export const TMDB_TOP_RATED_REVALIDATE_SECONDS = 21_600;
+export const TMDB_RECOMMENDATIONS_REVALIDATE_SECONDS = 21_600;
 export const DEFAULT_TMDB_LANGUAGE = 'vi-VN';
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -17,6 +22,7 @@ export interface TmdbRequestOptions {
   signal?: AbortSignal;
   language?: string;
   appendToResponse?: string[];
+  page?: number;
 }
 
 export interface TmdbClientContract {
@@ -24,6 +30,11 @@ export interface TmdbClientContract {
   getTv(id: string | number, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbTvDto>>;
   getTvSeason(seriesId: string | number, seasonNumber: number, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbSeasonDto>>;
   getConfiguration(options?: TmdbRequestOptions): Promise<TmdbResult<TmdbConfigurationDto>>;
+  getTrending(mediaType: TmdbMediaType, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>>;
+  getPopular(mediaType: TmdbMediaType, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>>;
+  getTopRated(mediaType: TmdbMediaType, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>>;
+  getRecommendations(mediaType: TmdbMediaType, id: string | number, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>>;
+  getSimilar(mediaType: TmdbMediaType, id: string | number, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>>;
 }
 
 export interface TmdbClientOptions {
@@ -129,6 +140,32 @@ export class TmdbClient implements TmdbClientContract {
     return this.requestJson('/configuration', TMDB_CONFIGURATION_REVALIDATE_SECONDS, options);
   }
 
+  getTrending(mediaType: TmdbMediaType, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>> {
+    return this.requestJson(`/trending/${mediaType}/week`, TMDB_TRENDING_REVALIDATE_SECONDS, options);
+  }
+
+  getPopular(mediaType: TmdbMediaType, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>> {
+    return this.requestJson(`/${mediaType}/popular`, TMDB_POPULAR_REVALIDATE_SECONDS, options);
+  }
+
+  getTopRated(mediaType: TmdbMediaType, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>> {
+    return this.requestJson(`/${mediaType}/top_rated`, TMDB_TOP_RATED_REVALIDATE_SECONDS, options);
+  }
+
+  getRecommendations(mediaType: TmdbMediaType, id: string | number, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>> {
+    const normalizedId = validId(id);
+    return normalizedId
+      ? this.requestJson(`/${mediaType}/${normalizedId}/recommendations`, TMDB_RECOMMENDATIONS_REVALIDATE_SECONDS, options)
+      : Promise.resolve(tmdbFailure({ code: 'INVALID_IDENTITY', message: 'TMDB recommendation ID must be a positive integer' }));
+  }
+
+  getSimilar(mediaType: TmdbMediaType, id: string | number, options?: TmdbRequestOptions): Promise<TmdbResult<TmdbDiscoveryPageDto>> {
+    const normalizedId = validId(id);
+    return normalizedId
+      ? this.requestJson(`/${mediaType}/${normalizedId}/similar`, TMDB_RECOMMENDATIONS_REVALIDATE_SECONDS, options)
+      : Promise.resolve(tmdbFailure({ code: 'INVALID_IDENTITY', message: 'TMDB similar ID must be a positive integer' }));
+  }
+
   private async requestJson<T>(path: string, revalidate: number, options?: TmdbRequestOptions): Promise<TmdbResult<T>> {
     if (!this.token) {
       return tmdbFailure({
@@ -139,6 +176,9 @@ export class TmdbClient implements TmdbClientContract {
 
     const url = new URL(`${this.baseUrl}/${path.replace(/^\//, '')}`);
     url.searchParams.set('language', options?.language?.trim() || this.language);
+    if (options?.page && Number.isInteger(options.page) && options.page > 0) {
+      url.searchParams.set('page', String(options.page));
+    }
     if (options?.appendToResponse && options.appendToResponse.length > 0) {
       url.searchParams.set('append_to_response', options.appendToResponse.join(','));
     }

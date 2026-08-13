@@ -2,6 +2,7 @@ import type {
   TmdbCastDto,
   TmdbConfigurationDto,
   TmdbCrewDto,
+  TmdbDiscoveryPageDto,
   TmdbGenreDto,
   TmdbMovieDto,
   TmdbSeasonDto,
@@ -17,6 +18,9 @@ import type {
   TmdbCastMember,
   TmdbCrewMember,
   TmdbCredits,
+  TmdbDiscoveryCandidate,
+  TmdbDiscoveryPage,
+  TmdbMediaType,
   TmdbSeasonMetadata,
   TmdbSeasonSummary,
   TmdbVideo,
@@ -69,6 +73,59 @@ function numberList(values: number[] | null | undefined): number[] | undefined {
   if (!Array.isArray(values)) return undefined;
   const normalized = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function yearFromDate(value: string | undefined): number | undefined {
+  const year = value ? Number(value.slice(0, 4)) : NaN;
+  return Number.isInteger(year) && year >= 1800 ? year : undefined;
+}
+
+function mapDiscoveryCandidate(
+  dto: TmdbMovieDto | TmdbTvDto,
+  mediaType: TmdbMediaType,
+): TmdbDiscoveryCandidate | null {
+  const tmdbId = positiveInteger(dto.id);
+  const title = mediaType === 'movie'
+    ? text((dto as TmdbMovieDto).title) ?? text((dto as TmdbMovieDto).original_title)
+    : text((dto as TmdbTvDto).name) ?? text((dto as TmdbTvDto).original_name);
+  if (!tmdbId || !title) return null;
+
+  const releaseDate = mediaType === 'movie'
+    ? text((dto as TmdbMovieDto).release_date)
+    : text((dto as TmdbTvDto).first_air_date);
+  const genreIds = numberList(dto.genre_ids);
+
+  return {
+    tmdbId,
+    mediaType,
+    title,
+    originalTitle: mediaType === 'movie'
+      ? text((dto as TmdbMovieDto).original_title)
+      : text((dto as TmdbTvDto).original_name),
+    overview: text(dto.overview),
+    posterPath: path(dto.poster_path),
+    backdropPath: path(dto.backdrop_path),
+    releaseDate,
+    year: yearFromDate(releaseDate),
+    voteAverage: finiteNumber(dto.vote_average),
+    voteCount: positiveInteger(dto.vote_count),
+    genreIds,
+    popularity: finiteNumber(dto.popularity),
+  };
+}
+
+/** Maps only lightweight list metadata. Rich detail DTOs never reach discovery cards. */
+export function mapTmdbDiscoveryPage(
+  dto: TmdbDiscoveryPageDto,
+  mediaType: TmdbMediaType,
+): TmdbDiscoveryPage {
+  const candidates = Array.isArray(dto.results)
+    ? dto.results.map((item) => mapDiscoveryCandidate(item, mediaType)).filter((item): item is TmdbDiscoveryCandidate => item !== null)
+    : [];
+  const page = positiveInteger(dto.page) ?? 1;
+  const totalPages = positiveInteger(dto.total_pages) ?? 1;
+  const totalResults = finiteNumber(dto.total_results) ?? candidates.length;
+  return { candidates, page, totalPages, totalResults };
 }
 
 function mapCast(items: TmdbCastDto[] | null | undefined): TmdbCastMember[] {

@@ -1,9 +1,8 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { getMoviesByGenre, getLatestMovies } from '@/lib/api/movies';
 import { getEnrichedMovieDetail, toMovieDetailModel } from '@/lib/tmdb/enrichment';
-import { MovieCardModel } from '@/types/movie';
+import { getRelatedMovies } from '@/lib/tmdb/related';
 import MovieDetails from '@/components/movie/MovieDetails';
 import MovieRow from '@/components/movie/MovieRow';
 
@@ -44,21 +43,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
 
   const movie = enriched.provider;
 
-  // Fetch related content by first category or fallback
-  let relatedMovies: MovieCardModel[] = [];
-  if (movie.categories && movie.categories.length > 0) {
-    const firstCat = movie.categories[0].slug;
-    const catRes = await getMoviesByGenre(firstCat, 1);
-    relatedMovies = catRes.items.filter((m) => m.slug !== movie.slug);
-  }
-
-  if (relatedMovies.length < 5) {
-    const fallbackRes = await getLatestMovies(1);
-    const extra = fallbackRes.items.filter(
-      (m) => m.slug !== movie.slug && !relatedMovies.some((r) => r.slug === m.slug)
-    );
-    relatedMovies = [...relatedMovies, ...extra];
-  }
+  const relatedMovies = await getRelatedMovies(movie);
 
   return (
     <div className="space-y-12">
@@ -67,7 +52,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
       {relatedMovies.length > 0 && (
         <MovieRow
           title="Phim Cùng Thể Loại & Đề Xuất"
-          movies={relatedMovies.slice(0, 12)}
+          movies={relatedMovies}
         />
       )}
     </div>

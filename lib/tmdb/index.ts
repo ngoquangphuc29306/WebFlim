@@ -14,6 +14,19 @@ export {
   isTmdbIdentityTrusted,
   toMovieDetailModel,
 } from '@/lib/tmdb/enrichment';
+export {
+  getPlayablePopular,
+  getPlayableRecommendations,
+  getPlayableSimilar,
+  getPlayableTopRated,
+  getPlayableTrending,
+  TmdbPlayableDiscoveryService,
+} from '@/lib/tmdb/discovery';
+export {
+  getProviderAvailabilityIndex,
+  ProviderPlayabilityResolver,
+  resolveCandidateFromRecords,
+} from '@/lib/tmdb/playability';
 export { buildTmdbImageUrl, type TmdbImagePreset } from '@/lib/tmdb/images';
 export type { TmdbError, TmdbErrorCode, TmdbResult } from '@/lib/tmdb/errors';
 export type {
@@ -35,4 +48,6 @@ export type {
   TmdbDetailPresentation,
   TmdbTrailerPresentation,
   TmdbVideo,
+  TmdbDiscoveryCandidate,
+  TmdbDiscoveryPage,
 } from '@/types/tmdb';

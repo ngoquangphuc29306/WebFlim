@@ -6,6 +6,7 @@ import tvFixture from '@/tests/fixtures/tmdb/tv.json';
 import {
   TMDB_CONFIGURATION_REVALIDATE_SECONDS,
   TMDB_DETAILS_REVALIDATE_SECONDS,
+  TMDB_TRENDING_REVALIDATE_SECONDS,
   TmdbClient,
 } from '@/lib/tmdb/client';
 
@@ -59,6 +60,29 @@ describe('TmdbClient', () => {
     expect(String(fetcher.mock.calls[0]?.[0])).toContain('/tv/1396?language=vi-VN');
     expect(String(fetcher.mock.calls[1]?.[0])).toContain('/tv/1396/season/1?language=vi-VN');
     expect(fetcher.mock.calls[2]?.[1]?.next).toEqual({ revalidate: TMDB_CONFIGURATION_REVALIDATE_SECONDS });
+  });
+
+  it('uses explicit, server-side discovery endpoints with bounded page input', async () => {
+    const fetcher = vi.fn<Fetcher>()
+      .mockResolvedValueOnce(jsonResponse({ page: 1, results: [] }))
+      .mockResolvedValueOnce(jsonResponse({ page: 1, results: [] }))
+      .mockResolvedValueOnce(jsonResponse({ page: 1, results: [] }))
+      .mockResolvedValueOnce(jsonResponse({ page: 1, results: [] }))
+      .mockResolvedValueOnce(jsonResponse({ page: 1, results: [] }));
+    const client = new TmdbClient({ fetcher, token: 'test-only-token' });
+
+    await client.getTrending('movie', { page: 1 });
+    await client.getPopular('tv');
+    await client.getTopRated('movie');
+    await client.getRecommendations('tv', 1396);
+    await client.getSimilar('movie', 603);
+
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://api.themoviedb.org/3/trending/movie/week?language=vi-VN&page=1');
+    expect(fetcher.mock.calls[0]?.[1]?.next).toEqual({ revalidate: TMDB_TRENDING_REVALIDATE_SECONDS });
+    expect(String(fetcher.mock.calls[1]?.[0])).toContain('/tv/popular?language=vi-VN');
+    expect(String(fetcher.mock.calls[2]?.[0])).toContain('/movie/top_rated?language=vi-VN');
+    expect(String(fetcher.mock.calls[3]?.[0])).toContain('/tv/1396/recommendations?language=vi-VN');
+    expect(String(fetcher.mock.calls[4]?.[0])).toContain('/movie/603/similar?language=vi-VN');
   });
 
   it('returns a typed configuration error without issuing a request when the token is missing', async () => {

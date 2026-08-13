@@ -73,8 +73,10 @@ function logApiError(error: VSMovApiError): void {
  */
 async function fetchJson<T>(
   url: string,
-  revalidateSec = 300
+  revalidateSec = 300,
+  options: { logFinalFailure?: boolean } = {}
 ): Promise<VSMovApiResult<T>> {
+  const logFinalFailure = options.logFinalFailure ?? true;
   for (let attempt = 1; attempt <= MAX_API_ATTEMPTS; attempt++) {
     const timeout = createTimeoutController(DEFAULT_API_TIMEOUT_MS);
     let failure: VSMovApiResult<T> | null = null;
@@ -107,7 +109,7 @@ async function fetchJson<T>(
             message: `Expected JSON response but received ${contentType} for ${url}`,
             url,
           };
-          logApiError(error);
+          if (logFinalFailure) logApiError(error);
           return { data: null, error };
         }
 
@@ -121,7 +123,7 @@ async function fetchJson<T>(
             url,
             cause: getErrorMessage(err),
           };
-          logApiError(error);
+          if (logFinalFailure) logApiError(error);
           return { data: null, error };
         }
       }
@@ -148,7 +150,7 @@ async function fetchJson<T>(
     }
 
     if (failure) {
-      logApiError(failure.error as VSMovApiError);
+      if (logFinalFailure) logApiError(failure.error as VSMovApiError);
       return failure;
     }
   }
@@ -158,7 +160,7 @@ async function fetchJson<T>(
     message: `Request failed without a response for ${url}`,
     url,
   };
-  logApiError(error);
+  if (logFinalFailure) logApiError(error);
   return { data: null, error };
 }
 
@@ -342,9 +344,10 @@ export const getMovieDetail = cache(
   ): Promise<{ movie: MovieDetailModel | null; error?: VSMovApiError | null }> => {
     if (!slug) return { movie: null, error: null };
     const url = `${BASE_URL}/phim/${slug}`;
-    const { data, error } = await fetchJson<VSMovDetailResponse>(url, 60);
+    const { data, error } = await fetchJson<VSMovDetailResponse>(url, 60, { logFinalFailure: false });
 
     let needFallback = false;
+    let finalFallbackError: VSMovApiError | null = null;
     if (!data || !data.movie) {
       needFallback = true;
     } else if (data.episodes && data.episodes[0]?.server_data?.length) {
@@ -360,10 +363,10 @@ export const getMovieDetail = cache(
       const candidateSlugs = [slug];
       if (slug === 'one-piece') candidateSlugs.push('dao-hai-tac');
       if (slug === 'dao-hai-tac') candidateSlugs.push('one-piece');
-
       for (const candidate of candidateSlugs) {
         const fallbackUrl = `https://phimapi.com/phim/${candidate}`;
-        const { data: fallbackData } = await fetchJson<VSMovDetailResponse>(fallbackUrl, 300);
+        const { data: fallbackData, error: fallbackError } = await fetchJson<VSMovDetailResponse>(fallbackUrl, 300, { logFinalFailure: false });
+        if (fallbackError) finalFallbackError = fallbackError;
         if (fallbackData && fallbackData.movie && fallbackData.episodes?.length) {
           const normalized = normalizeMovieDetail(fallbackData);
           if (normalized) {
@@ -374,6 +377,8 @@ export const getMovieDetail = cache(
     }
 
     if (!data || !data.movie) {
+      const finalError = finalFallbackError ?? error;
+      if (finalError) logApiError(finalError);
       return { movie: null, error };
     }
 

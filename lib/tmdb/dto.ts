@@ -59,6 +59,7 @@ export interface TmdbMovieDto {
   release_date?: string | null;
   original_language?: string | null;
   genres?: TmdbGenreDto[] | null;
+  genre_ids?: number[] | null;
   vote_average?: number | null;
   vote_count?: number | null;
   popularity?: number | null;
@@ -80,6 +81,7 @@ export interface TmdbTvDto {
   last_air_date?: string | null;
   original_language?: string | null;
   genres?: TmdbGenreDto[] | null;
+  genre_ids?: number[] | null;
   vote_average?: number | null;
   vote_count?: number | null;
   popularity?: number | null;
@@ -126,4 +128,11 @@ export interface TmdbConfigurationDto {
     still_sizes?: string[] | null;
     logo_sizes?: string[] | null;
   } | null;
+}
+
+export interface TmdbDiscoveryPageDto {
+  page?: number | null;
+  results?: Array<TmdbMovieDto | TmdbTvDto> | null;
+  total_pages?: number | null;
+  total_results?: number | null;
 }
