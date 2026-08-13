@@ -1,7 +1,12 @@
-import { useEffect, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
+import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type Hls from 'hls.js';
+import {
+  isNativeHlsSupported,
+  selectPlaybackBackend,
+} from '@/components/player/playback-backend';
+import type { PlaybackBackend } from '@/components/player/playback-backend';
 
-export type PlayerMode = 'native-hls' | 'hls-js' | 'embed' | 'unavailable';
+export type PlayerMode = PlaybackBackend;
 
 export const MAX_NETWORK_RECOVERY_ATTEMPTS = 2;
 export const MAX_MEDIA_RECOVERY_ATTEMPTS = 2;
@@ -32,7 +37,7 @@ interface UseHlsPlayerOptions {
   useDirectStream: boolean;
   m3u8Url?: string;
   embedUrl: string;
-  videoRef: RefObject<HTMLVideoElement | null>;
+  getVideoElement: () => HTMLVideoElement | null;
   hlsRef: MutableRefObject<Hls | null>;
   sourceGenerationRef: MutableRefObject<number>;
   networkRecoveryCountRef: MutableRefObject<number>;
@@ -47,7 +52,7 @@ export function useHlsPlayer({
   useDirectStream,
   m3u8Url,
   embedUrl,
-  videoRef,
+  getVideoElement,
   hlsRef,
   sourceGenerationRef,
   networkRecoveryCountRef,
@@ -85,11 +90,14 @@ export function useHlsPlayer({
       return;
     }
 
-    const video = videoRef.current;
+    const video = getVideoElement();
     if (!video) return;
 
-    // Check Native HLS support (Safari, Mobile Safari, iOS)
-    const canNative = video.canPlayType('application/vnd.apple.mpegurl') !== '';
+    // Chromium may report "maybe" for HLS while still lacking native
+    // playback. Treat a definite "probably" as native everywhere and allow
+    // the ambiguous result only for WebKit/Safari, where native HLS is real.
+    const nativeHlsResult = video.canPlayType('application/vnd.apple.mpegurl');
+    const canNative = isNativeHlsSupported(nativeHlsResult, navigator.userAgent);
 
     if (canNative) {
       queueMicrotask(() => {
@@ -106,12 +114,19 @@ export function useHlsPlayer({
             return;
           }
 
-          if (!HlsClass.isSupported()) {
+          const backend = selectPlaybackBackend({
+            hasDirectHls: true,
+            nativeHlsSupported: canNative,
+            hlsJsSupported: HlsClass.isSupported(),
+            hasTrustedEmbed: Boolean(embedUrl),
+          });
+
+          if (backend !== 'hls-js') {
             fallbackToEmbed('HLS not supported in this browser environment');
             return;
           }
 
-          const currentVideo = videoRef.current;
+          const currentVideo = getVideoElement();
           if (!currentVideo) return;
 
           queueMicrotask(() => {
@@ -194,7 +209,7 @@ export function useHlsPlayer({
     useDirectStream,
     m3u8Url,
     embedUrl,
-    videoRef,
+    getVideoElement,
     hlsRef,
     sourceGenerationRef,
     networkRecoveryCountRef,
