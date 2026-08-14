@@ -22,7 +22,9 @@ const navLinks = [
   { name: 'Khám Phá', href: '/kham-pha', icon: Compass },
   { name: 'Phim Lẻ', href: '/danh-sach/phim-le' },
   { name: 'Phim Bộ', href: '/danh-sach/phim-bo' },
-  { name: 'Subteam', href: '/danh-sach/subteam' },
+  { name: 'Hoạt hình', href: '/danh-sach/hoat-hinh' },
+  { name: 'TV Shows', href: '/danh-sach/tv-shows' },
+  { name: 'Phim chiếu rạp', href: '/danh-sach/phim-chieu-rap' },
 ];
 
 export default function Header({ genres = [], countries = [], years = [] }: HeaderProps) {
