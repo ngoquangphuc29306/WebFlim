@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-[#080808] text-[#f5f5f5] min-h-screen flex flex-col font-sans antialiased selection:bg-[#e50914] selection:text-white">
         <Providers>
           <Header genres={genres} />
-          <main className="flex-1 pt-16 sm:pt-20 pb-14 md:pb-0">{children}</main>
+          <main className="flex-1 pt-16 sm:pt-20 pb-20 sm:pb-24 md:pb-8">{children}</main>
           <Footer />
           <BottomNav />
           <ToastContainer />

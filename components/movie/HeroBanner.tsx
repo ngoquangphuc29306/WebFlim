@@ -70,10 +70,10 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="relative w-full h-[55vh] min-h-[390px] sm:h-[70vh] sm:min-h-[500px] max-h-[750px] bg-[#080808] overflow-hidden text-white border-b border-[#1f1f1f] select-none"
+      className="relative w-full h-[58vh] min-h-[420px] sm:h-[68vh] sm:min-h-[500px] lg:h-[76vh] lg:min-h-[560px] max-h-[780px] bg-[#080808] overflow-hidden text-white select-none"
     >
       {/* Background Backdrop Image */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <MovieImage
           src={current.thumbUrl || current.posterUrl}
           alt={current.title}
@@ -81,17 +81,23 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
           priority
           sizes="100vw"
           aspectRatio="backdrop"
-          className="w-full h-full object-cover object-center opacity-60 scale-105 transition-all duration-700 ease-out"
+          className="w-full h-full object-cover object-center opacity-65 scale-105 transition-all duration-700 ease-out motion-reduce:transition-none"
         />
-        {/* Blending Gradients */}
-        <div className="absolute inset-0 bg-hero-gradient pointer-events-none" />
-        <div className="absolute inset-0 bg-overlay-gradient pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent pointer-events-none" />
+
+        {/* Cinematic Multi-directional Scrim */}
+        {/* Left-to-right directional scrim for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#080808]/95 via-[#080808]/65 via-50% to-transparent pointer-events-none" />
+
+        {/* Bottom-to-top gradient for seamless page blend */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/75 via-35% to-transparent pointer-events-none" />
+
+        {/* Top subtle vignette for header contrast */}
+        <div className="absolute top-0 left-0 right-0 h-24 sm:h-32 bg-gradient-to-b from-[#080808]/80 via-transparent to-transparent pointer-events-none" />
       </div>
 
       {/* Hero Content Container */}
-      <div className="relative max-w-[1920px] mx-auto h-full px-4 sm:px-6 lg:px-8 xl:px-12 flex flex-col justify-end pb-12 sm:pb-16 z-20">
-        <div className="max-w-2xl space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-left-4 duration-500">
+      <div className="relative max-w-[1920px] mx-auto h-full px-4 sm:px-6 lg:px-8 xl:px-12 flex flex-col justify-end pb-12 sm:pb-16 lg:pb-20 z-20">
+        <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-left-3 duration-500 motion-reduce:animate-none">
           {/* Metadata Badges */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {current.quality && (
@@ -100,7 +106,7 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
               </MovieBadge>
             )}
             {current.language && (
-              <MovieBadge variant="secondary" size="md" className="bg-[#1f1f1f]/80 backdrop-blur-sm">
+              <MovieBadge variant="secondary" size="md" className="bg-[#181818]/90 border border-[#2a2a2a] backdrop-blur-xs">
                 {current.language}
               </MovieBadge>
             )}
@@ -108,7 +114,7 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
               <span className="text-[#a3a3a3] font-medium text-xs sm:text-sm">{current.year}</span>
             )}
             {current.rating && (
-              <span className="flex items-center gap-1 text-amber-400 font-semibold bg-black/50 px-2 py-0.5 rounded border border-amber-500/30 text-xs">
+              <span className="flex items-center gap-1 text-amber-400 font-semibold bg-black/60 px-2 py-0.5 rounded-md border border-amber-500/30 text-xs">
                 <Star className="w-3.5 h-3.5 fill-current" />
                 {current.rating.toFixed(1)}
               </span>
@@ -116,24 +122,24 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#f5f5f5] leading-tight drop-shadow-md">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#f5f5f5] leading-[1.15] drop-shadow-md line-clamp-2">
             {current.title}
           </h1>
 
           {/* Original Title */}
           {current.originalTitle && (
-            <p className="text-sm sm:text-base text-[#a3a3a3] font-medium tracking-wide">
+            <p className="text-xs sm:text-sm md:text-base text-[#a3a3a3] font-medium tracking-wide line-clamp-1">
               {current.originalTitle}
             </p>
           )}
 
           {/* Categories */}
           {current.categories && current.categories.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {current.categories.slice(0, 3).map((cat) => (
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-0.5">
+              {current.categories.slice(0, 4).map((cat) => (
                 <span
                   key={cat.slug}
-                  className="text-xs text-[#d4d4d4] bg-[#1a1a1a]/80 border border-[#2a2a2a] px-2.5 py-0.5 rounded-full"
+                  className="text-xs text-[#d4d4d4] bg-[#141414]/90 border border-[#2a2a2a] px-2.5 py-0.5 rounded-full"
                 >
                   {cat.name}
                 </span>
@@ -142,12 +148,13 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
           )}
 
           {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-2 sm:pt-3">
             <MovieButton
               variant="primary"
               size="lg"
               icon={<Play className="w-5 h-5 fill-current" />}
               href={`/xem-phim/${current.slug}`}
+              className="min-h-[44px] shadow-sm"
             >
               Xem ngay
             </MovieButton>
@@ -157,6 +164,7 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
               size="lg"
               icon={<Info className="w-5 h-5" />}
               href={`/phim/${current.slug}`}
+              className="min-h-[44px]"
             >
               Chi tiết
             </MovieButton>
@@ -164,10 +172,10 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
             <button
               onClick={() => toggleWatchlist(current)}
               type="button"
-              className={`p-3 rounded-lg border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
+              className={`p-3 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
                 saved
                   ? 'bg-[#e50914] border-[#e50914] text-white'
-                  : 'bg-[#1a1a1a]/80 border-[#333333] text-[#a3a3a3] hover:text-white hover:bg-[#282828]'
+                  : 'bg-[#181818]/90 border-[#2a2a2a] text-[#a3a3a3] hover:text-white hover:bg-[#222222]'
               }`}
               title={saved ? 'Đã lưu vào danh sách' : 'Lưu phim này'}
               aria-label={saved ? `Bỏ lưu phim ${current.title}` : `Lưu phim ${current.title}`}
@@ -180,36 +188,43 @@ export default function HeroBanner({ movies }: HeroBannerProps) {
 
       {/* Navigation Controls */}
       {movies.length > 1 && (
-        <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-12 z-30 flex items-center gap-2 sm:gap-3">
+        <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 lg:right-12 z-30 flex items-center gap-1 sm:gap-2">
           <button
             onClick={prevSlide}
             type="button"
-            className="hidden sm:flex p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1a1a1a] text-white border border-[#2a2a2a] transition-all hover:scale-110 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
-            aria-label="Previous Slide"
+            className="hidden sm:flex min-w-[44px] min-h-[44px] p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1e1e1e] text-[#f5f5f5] border border-[#2a2a2a] hover:border-[#e50914] transition-all hover:scale-105 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+            aria-label="Phim trước"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
 
-          {/* Slide Indicator Dots */}
-          <div className="flex items-center gap-1.5">
+          {/* Slide Indicator Dots with 44px touch targets */}
+          <div className="flex items-center">
             {movies.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
-                className={`h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
-                  currentIndex === idx ? 'w-6 bg-[#e50914]' : 'w-2 bg-white/40 hover:bg-white/70'
-                }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
+                className="min-w-[36px] sm:min-w-[44px] min-h-[44px] p-2 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded-lg"
+                aria-label={`Chuyển đến phim ${idx + 1}`}
+                aria-current={currentIndex === idx ? 'true' : undefined}
+              >
+                <span
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    currentIndex === idx
+                      ? 'w-7 bg-[#e50914]'
+                      : 'w-2 bg-white/30 group-hover:bg-white/60'
+                  }`}
+                />
+              </button>
             ))}
           </div>
 
           <button
             onClick={nextSlide}
             type="button"
-            className="hidden sm:flex p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1a1a1a] text-[#f5f5f5] border border-[#2a2a2a] transition-all hover:scale-110 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
-            aria-label="Next Slide"
+            className="hidden sm:flex min-w-[44px] min-h-[44px] p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#1e1e1e] text-[#f5f5f5] border border-[#2a2a2a] hover:border-[#e50914] transition-all hover:scale-105 active:scale-95 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+            aria-label="Phim tiếp theo"
           >
             <ChevronRight className="w-5 h-5" />
           </button>

@@ -32,20 +32,21 @@ export default function MovieImage({
     setError(true);
   };
 
+  const ratioClass =
+    aspectRatio === 'poster'
+      ? 'aspect-[2/3]'
+      : aspectRatio === 'backdrop'
+      ? 'aspect-[16/9]'
+      : aspectRatio === 'square'
+      ? 'aspect-square'
+      : '';
+
   if (error || !cleanSrc) {
     return (
       <div
-        className={`relative flex flex-col items-center justify-center bg-[#141414] border border-[#222] p-4 text-center text-[#737373] select-none ${
-          aspectRatio === 'poster'
-            ? 'aspect-[2/3]'
-            : aspectRatio === 'backdrop'
-            ? 'aspect-[16/9]'
-            : aspectRatio === 'square'
-            ? 'aspect-square'
-            : ''
-        } ${className}`}
+        className={`relative flex flex-col items-center justify-center bg-[#121212] border border-[#1f1f1f] p-4 text-center text-[#737373] select-none ${ratioClass} ${className}`}
       >
-        <Film className="w-8 h-8 sm:w-10 sm:h-10 text-[#404040] mb-2" />
+        <Film className="w-8 h-8 sm:w-10 sm:h-10 text-[#333333] mb-2 shrink-0" />
         <span className="text-xs font-medium text-[#a3a3a3] line-clamp-2 px-1">
           {title || alt || 'PHEVO Cinema'}
         </span>
@@ -55,15 +56,7 @@ export default function MovieImage({
 
   return (
     <div
-      className={`relative overflow-hidden bg-[#121212] ${
-        aspectRatio === 'poster'
-          ? 'aspect-[2/3]'
-          : aspectRatio === 'backdrop'
-          ? 'aspect-[16/9]'
-          : aspectRatio === 'square'
-          ? 'aspect-square'
-          : ''
-      } ${className}`}
+      className={`relative overflow-hidden bg-[#101010] ${ratioClass} ${className}`}
     >
       <Image
         src={cleanSrc}
@@ -78,4 +71,3 @@ export default function MovieImage({
     </div>
   );
 }
-

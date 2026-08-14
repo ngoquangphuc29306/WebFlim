@@ -20,15 +20,15 @@ const TOP_GENRES = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[#050505] border-t border-[#1a1a1a] text-[#737373] text-sm pt-12 pb-8 mt-20">
+    <footer className="bg-[#080808] border-t border-[#1f1f1f] text-[#737373] text-sm pt-12 pb-8 mt-20">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#141414]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#181818]">
           
           {/* Brand Info */}
           <div className="space-y-4 sm:col-span-2 md:col-span-1">
             <Link
               href="/"
-              className="flex items-center gap-2.5 text-white font-bold text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded w-fit"
+              className="flex items-center gap-2.5 text-white font-bold text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded-lg w-fit"
             >
               <Image
                 src="/logo.png"
@@ -53,7 +53,10 @@ export default function Footer() {
             <ul className="space-y-2 text-xs">
               {QUICK_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
+                  <Link
+                    href={link.href}
+                    className="hover:text-[#f5f5f5] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1 py-0.5 -mx-1"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -67,7 +70,10 @@ export default function Footer() {
             <ul className="space-y-2 text-xs">
               {TOP_GENRES.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="hover:text-white transition-colors focus-visible:outline-none focus-visible:underline">
+                  <Link
+                    href={link.href}
+                    className="hover:text-[#f5f5f5] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1 py-0.5 -mx-1"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -82,7 +88,7 @@ export default function Footer() {
               Tất cả nội dung được tổng hợp tự động từ các dịch vụ phát trực tuyến công cộng. Chúng tôi không lưu trữ bất kỳ file phim nào trên máy chủ.
             </p>
             <p className="text-xs text-[#8c8c8c] leading-relaxed">
-              This product uses the <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer noopener" className="text-[#d4d4d4] hover:text-white underline">TMDB API</a> but is not endorsed or certified by TMDB.
+              This product uses the <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer noopener" className="text-[#d4d4d4] hover:text-white underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914]">TMDB API</a> but is not endorsed or certified by TMDB.
             </p>
             <div className="flex items-center gap-2 pt-2 text-xs text-[#a3a3a3]">
               <Shield className="w-4 h-4 text-[#e50914]" />

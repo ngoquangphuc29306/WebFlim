@@ -49,6 +49,11 @@ import { usePlyrPlayer } from './hooks/usePlyrPlayer';
 
 export type { PlayerMode } from './hooks/useHlsPlayer';
 
+function formatEpisodeLabel(name: string | undefined, fallback: string): string {
+  const label = name?.trim() || fallback;
+  return label.toLowerCase().startsWith('tập') ? label : `Tập ${label}`;
+}
+
 function setVideoProperties(el: HTMLVideoElement, volume: number, muted: boolean, rate: number) {
   el.volume = volume;
   el.muted = muted;
@@ -123,6 +128,8 @@ function VideoPlayerInner({
   const [prefs, setPrefs] = useState<PlayerPreferences>(DEFAULT_PREFERENCES);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [pipSupported, setPipSupported] = useState(false);
+  const displayEpisodeLabel = formatEpisodeLabel(episodeName, 'Full');
+  const nextEpisodeLabel = formatEpisodeLabel(nextEpisodeName, 'kế tiếp');
 
   // Auto-next state
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
@@ -926,7 +933,7 @@ function VideoPlayerInner({
                     {movieTitle}
                   </h3>
                   <p className="text-xs text-[#e50914] font-semibold mt-0.5">
-                    Chuẩn bị phát: Tập {nextEpisodeName || 'kế tiếp'}
+                    Chuẩn bị phát: {nextEpisodeLabel}
                   </p>
                 </div>
               </div>
@@ -968,16 +975,17 @@ function VideoPlayerInner({
           <iframe
             key={iframeKey}
             src={embedUrl}
-            title={`${movieTitle} - Tập ${episodeName}`}
+            title={`${movieTitle} - ${displayEpisodeLabel}`}
             className="w-full h-full border-0"
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             allowFullScreen
             onLoad={() => setLoading(false)}
           />
         ) : !useDirectStream || !m3u8Url ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#101010] text-[#a3a3a3]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0c0c0c] text-[#a3a3a3] p-6 text-center">
             <ShieldAlert className="w-10 h-10 text-[#e50914]" />
-            <p className="text-sm font-medium">Không tìm thấy luồng phát cho tập này.</p>
+            <p className="text-sm font-semibold text-white">Không tìm thấy luồng phát cho tập này.</p>
+            <p className="text-xs text-[#737373] max-w-sm">Vui lòng thử chọn nguồn phát khác hoặc chuyển sang tập khác.</p>
           </div>
         ) : null}
       </div>
@@ -991,7 +999,7 @@ function VideoPlayerInner({
             {serverName || 'Server Vietsub'}
           </span>
           <span className="bg-[#e50914] text-white font-bold px-2.5 py-1 rounded-lg">
-            Tập {episodeName}
+            {displayEpisodeLabel}
           </span>
           <span className="hidden xs:inline-block bg-[#181818] border border-[#262626] text-[#737373] text-[11px] px-2 py-1 rounded-lg">
             {getPlayerModeLabel()}
@@ -1079,10 +1087,10 @@ function VideoPlayerInner({
             <button
               onClick={triggerNextEpisodeNavigation}
               className="flex items-center gap-1.5 bg-[#e50914]/15 hover:bg-[#e50914]/25 text-[#e50914] hover:text-white px-2.5 py-1.5 rounded-lg border border-[#e50914]/40 font-bold transition-all active:scale-95"
-              title={`Chuyển sang Tập ${nextEpisodeName || 'tiếp theo'} (Phím tắt N)`}
+              title={`Chuyển sang ${nextEpisodeLabel} (Phím tắt N)`}
             >
               <FastForward className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Tập {nextEpisodeName || 'kế'}</span>
+              <span className="hidden xs:inline">{nextEpisodeLabel}</span>
             </button>
           )}
 

@@ -32,17 +32,17 @@ export default function EmptyState({
 
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 my-6 bg-[#101010] border border-[#222222] rounded-2xl max-w-xl mx-auto ${className}`}
+      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 my-6 bg-[#121212] border border-[#262626] rounded-2xl max-w-xl mx-auto shadow-xl ${className}`}
     >
-      <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] mb-4 shadow-inner">
-        <IconComponent className="w-7 h-7 text-[#e50914]" />
+      <div className="w-16 h-16 rounded-2xl bg-[#181818] border border-[#2e2e2e] flex items-center justify-center text-[#a3a3a3] mb-5 shadow-inner">
+        <IconComponent className="w-8 h-8 text-[#e50914]" />
       </div>
 
-      <h3 className="text-lg sm:text-xl font-bold text-[#f5f5f5] tracking-tight mb-2">
+      <h2 className="text-lg sm:text-xl font-bold text-[#f5f5f5] tracking-tight mb-2">
         {title}
-      </h3>
+      </h2>
 
-      <p className="text-sm text-[#a3a3a3] leading-relaxed max-w-md mb-6">
+      <p className="text-xs sm:text-sm text-[#a3a3a3] leading-relaxed max-w-md mb-6">
         {description}
       </p>
 
@@ -52,6 +52,7 @@ export default function EmptyState({
           size="md"
           href={actionHref}
           onClick={onAction}
+          className="min-h-[42px] px-6"
         >
           {actionLabel}
         </MovieButton>

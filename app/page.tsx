@@ -17,7 +17,7 @@ export default async function HomePage() {
   const { heroMovies, latestMovies, singleMovies, seriesMovies, subteamMovies, hoathinhMovies } = data;
 
   return (
-    <div className="-mt-16 sm:-mt-20 space-y-6 sm:space-y-8 pb-16">
+    <div className="-mt-16 sm:-mt-20 space-y-4 sm:space-y-6 lg:space-y-8 pb-16">
       {/* Featured Hero Banner */}
       <HeroBanner movies={heroMovies} />
 
@@ -70,13 +70,13 @@ export default async function HomePage() {
 
       {/* Quick Genre Explorer */}
       {genres.length > 0 && (
-        <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
-          <div className="bg-[#101010] border border-[#222222] p-6 sm:p-8 rounded-2xl space-y-5 shadow-2xl">
+        <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8">
+          <div className="bg-[#101010] border border-[#1f1f1f] p-6 sm:p-8 rounded-2xl space-y-5 shadow-2xl">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-[#e50914]/10 border border-[#e50914]/30 flex items-center justify-center text-[#e50914]">
                 <Tag className="w-4 h-4" />
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
+              <h2 className="text-lg sm:text-xl font-bold text-[#f5f5f5] uppercase tracking-wide">
                 Khám Phá Theo Thể Loại
               </h2>
             </div>
@@ -86,7 +86,7 @@ export default async function HomePage() {
                 <Link
                   key={g.slug}
                   href={`/the-loai/${g.slug}`}
-                  className="p-3 bg-[#181818] border border-[#262626] hover:border-[#e50914] hover:bg-[#1f1f1f] rounded-xl text-xs font-semibold text-[#d4d4d4] hover:text-white transition-all text-center truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+                  className="p-3 bg-[#141414] border border-[#262626] hover:border-[#e50914] hover:bg-[#1f1f1f] rounded-xl text-xs font-semibold text-[#a3a3a3] hover:text-[#f5f5f5] transition-all text-center truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
                 >
                   {g.name}
                 </Link>
