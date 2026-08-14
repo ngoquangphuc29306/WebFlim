@@ -11,7 +11,6 @@ import type {
   MovieBrowseSort,
   MovieBrowseType,
   MovieProviderCapabilities,
-  MovieProviderKey,
   YearOptionModel,
 } from '@/types/movie';
 import { countActiveBrowseFilters, getUnsupportedBrowseFilterReason } from '@/lib/api/discovery-resolver';
@@ -23,7 +22,6 @@ interface DiscoveryFilterDialogProps {
   genres: CategoryModel[];
   countries: CountryModel[];
   years: YearOptionModel[];
-  provider: MovieProviderKey;
   capabilities: MovieProviderCapabilities;
   onApply: (filters: MovieBrowseFilter) => void;
 }
@@ -53,7 +51,6 @@ export default function DiscoveryFilterDialog({
   genres,
   countries,
   years,
-  provider,
   capabilities,
   onApply,
 }: DiscoveryFilterDialogProps) {
@@ -169,7 +166,6 @@ export default function DiscoveryFilterDialog({
         </div>
 
         {!isSupportedCombination && <div className="px-4 sm:px-5 py-2.5 bg-amber-950/50 border-t border-amber-800/50 flex items-center gap-2 text-amber-200 text-xs shrink-0"><AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" /><span>{unsupportedReason}</span></div>}
-        {provider === 'vsmov' && <div className="px-4 sm:px-5 py-2 text-[11px] text-[#737373] bg-[#141414]">Một số bộ lọc nâng cao chỉ khả dụng khi nhà cung cấp đang hoạt động hỗ trợ chúng.</div>}
         <div style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }} className="flex items-center justify-between px-4 sm:px-5 py-3.5 sm:py-4 border-t border-[#262626] bg-[#161616] shrink-0">
           <button type="button" onClick={() => setDraft({})} disabled={activeDraftCount === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-[#a3a3a3] hover:text-white hover:bg-[#262626] disabled:opacity-40 disabled:hover:bg-transparent transition-colors"><RotateCcw className="w-3.5 h-3.5" /><span>Đặt lại tất cả</span></button>
           <div className="flex items-center gap-2"><button type="button" onClick={handleClose} className="px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-medium text-[#a3a3a3] hover:text-white hover:bg-[#262626] transition-colors">Hủy</button><button type="button" onClick={() => { if (!isSupportedCombination) return; onApply({ ...draft, page: 1 }); handleClose(); }} disabled={!isSupportedCombination} className="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#e50914] hover:bg-[#b80710] disabled:opacity-40 disabled:hover:bg-[#e50914] shadow-lg shadow-[#e50914]/30 transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><span>Áp dụng bộ lọc</span>{activeDraftCount > 0 && <span className="bg-white/20 text-white px-1.5 py-0.5 rounded-full text-[10px]">{activeDraftCount}</span>}</button></div>

@@ -15,7 +15,7 @@ import type {
   KkPhimTaxonomyDto,
   KkPhimYearDto,
 } from '@/types/kkphim';
-import { sortEpisodeItems } from '@/lib/api/normalizers';
+import { sortEpisodeItems } from '@/lib/api/providers/shared/episode-utils';
 import { emptyPagination } from '@/lib/api/providers/movie-provider';
 
 const DEFAULT_CDN = 'https://phimimg.com';
