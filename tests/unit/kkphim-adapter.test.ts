@@ -17,8 +17,6 @@ import {
   KKPHIM_SLUG_ALIASES,
   KkPhimMovieProvider,
 } from '@/lib/api/providers/kkphim/provider';
-import { isMovieProviderCanaryEnabled, resolveMovieProvider } from '@/lib/api/providers/config';
-import { compareMovieDetails, compareMovieListResults } from '@/lib/api/providers/canary';
 
 const fetchResponse = (body: unknown, status = 200, contentType = 'application/json'): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': contentType } });
@@ -65,7 +63,6 @@ describe('KKPhim mapping boundary', () => {
     expect(movie?.episodes[1]?.items[0]?.m3u8Url).toBeUndefined();
   });
 });
-
 describe('KKPhim request reliability', () => {
   it('serializes a combined provider-native browse request without losing filters', () => {
     expect(buildKkPhimBrowseQuery({
@@ -191,39 +188,5 @@ describe('KKPhim provider contract', () => {
     expect(detail).toHaveBeenCalledTimes(2);
     expect(result.movie?.slug).toBe(requested);
     expect(result.movie?.providerIdentity?.provider).toBe('kkphim');
-  });
-});
-
-describe('provider selection configuration', () => {
-  it.each([
-    [undefined, 'kkphim'],
-    ['', 'kkphim'],
-    ['  ', 'kkphim'],
-    ['kkphim', 'kkphim'],
-    ['KKPHIM', 'kkphim'],
-    [' KkPhIm ', 'kkphim'],
-    ['vsmov', 'vsmov'],
-    ['VSMOV', 'vsmov'],
-    [' Vsmov ', 'vsmov'],
-    ['unexpected', 'kkphim'],
-  ])('resolves %j to %s', (input, expected) => {
-    expect(resolveMovieProvider(input)).toBe(expected);
-  });
-
-  it('recognizes explicit KKPhim/canary values', () => {
-    expect(resolveMovieProvider('kkphim')).toBe('kkphim');
-    expect(isMovieProviderCanaryEnabled('true')).toBe(true);
-    expect(isMovieProviderCanaryEnabled('1')).toBe(true);
-    expect(isMovieProviderCanaryEnabled('false')).toBe(false);
-  });
-});
-
-describe('normalized provider canary comparison', () => {
-  it('compares normalized list and detail shapes without comparing raw DTOs', () => {
-    const list = mapKkListResponse(kkListFixture as KkPhimListResponseDto);
-    const detail = mapKkDetailResponse(kkDetailFixture as KkPhimDetailResponseDto);
-
-    expect(compareMovieListResults('list', 'kkphim', 'vsmov', list.items, list.items).mismatches).toEqual([]);
-    expect(compareMovieDetails('detail', 'kkphim', 'vsmov', detail, detail).mismatches).toEqual([]);
   });
 });

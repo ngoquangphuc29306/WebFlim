@@ -9,7 +9,6 @@ import type {
   MovieBrowseFilter,
   MovieCardModel,
   MovieProviderCapabilities,
-  MovieProviderKey,
   VSMovPagination,
   YearOptionModel,
 } from '@/types/movie';
@@ -33,7 +32,6 @@ interface DiscoveryClientViewProps {
   pagination: VSMovPagination;
   title: string;
   error?: string | null;
-  provider: MovieProviderKey;
   capabilities: MovieProviderCapabilities;
 }
 
@@ -65,7 +63,6 @@ export default function DiscoveryClientView({
   pagination,
   title,
   error,
-  provider,
   capabilities,
 }: DiscoveryClientViewProps) {
   const router = useRouter();
@@ -161,7 +158,6 @@ export default function DiscoveryClientView({
           genres={genres}
           countries={countries}
           years={years}
-          provider={provider}
           capabilities={capabilities}
           onApply={updateFilters}
         />

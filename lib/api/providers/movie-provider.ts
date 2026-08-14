@@ -38,7 +38,7 @@ export interface HomepageData {
 }
 
 export interface MovieProvider {
-  readonly key: 'vsmov' | 'kkphim';
+  readonly key: 'kkphim';
   readonly capabilities: MovieProviderCapabilities;
 
   getLatestMovies(page?: number): Promise<MovieListResult>;
@@ -66,7 +66,7 @@ export function emptyPagination(): VSMovPagination {
 }
 
 export function invalidProviderError(
-  provider: 'vsmov' | 'kkphim',
+  provider: 'kkphim',
   message: string
 ): ProviderError {
   return {

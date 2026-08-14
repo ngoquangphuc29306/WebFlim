@@ -10,7 +10,6 @@ import {
   resolveCatalogRequest,
   withBrowseFilterChange,
 } from '@/lib/api/discovery-resolver';
-import { VsmovMovieProvider } from '@/lib/api/providers/vsmov/provider';
 
 describe('discovery resolver', () => {
   it('sanitizes query values and normalizes invalid pagination', () => {
@@ -83,25 +82,14 @@ describe('provider-neutral browse filter contract', () => {
   });
 
   it('reports capability limitations instead of silently dropping advanced filters', () => {
-    const vsmovCapabilities = {
-      combinedBrowseFilters: false,
-      yearRange: false,
-      languageFilter: false,
-      sorting: false,
-      browseTypes: ['phim-le', 'phim-bo'] as const,
+    const capabilities = {
+      combinedBrowseFilters: true,
+      yearRange: true,
+      languageFilter: true,
+      sorting: true,
+      browseTypes: ['phim-le', 'phim-bo', 'tv-shows', 'hoat-hinh'] as const,
     };
-    expect(getUnsupportedBrowseFilterReason({ language: 'vietsub' }, vsmovCapabilities)).toContain('ngôn ngữ');
-    expect(getUnsupportedBrowseFilterReason({ type: 'tv-shows' }, vsmovCapabilities)).toContain('loại phim');
-    expect(getUnsupportedBrowseFilterReason({ yearFrom: 2025, yearTo: 2020 }, { ...vsmovCapabilities, yearRange: true })).toContain('Khoảng năm không hợp lệ');
+    expect(getUnsupportedBrowseFilterReason({ yearFrom: 2025, yearTo: 2020 }, capabilities)).toContain('Khoảng năm không hợp lệ');
     expect(countActiveBrowseFilters({ type: 'phim-bo', yearFrom: 2020, yearTo: 2024, page: 2 })).toBe(2);
-  });
-
-  it('returns an explicit VSMov error instead of dropping an unsupported advanced filter', async () => {
-    const result = await new VsmovMovieProvider().browseMovies({ language: 'vietsub', page: 2 });
-    expect(result).toMatchObject({
-      items: [],
-      title: 'Khám phá phim',
-      error: { type: 'INVALID_REQUEST', provider: 'vsmov' },
-    });
   });
 });

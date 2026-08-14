@@ -199,13 +199,13 @@ export function countActiveFilters(filters: CatalogFilters): number {
 }
 
 /**
- * Resolves active filters into a deterministic VSMov API request strategy.
+ * Resolves legacy catalog filters into a deterministic provider request strategy.
  * Prevents silent dropping of unsupported query parameter combinations.
  */
 export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverResult {
   const { genre, country, year, type, page = 1 } = filters;
 
-  // 1. Genre Priority: /api/the-loai/{genre}?country=...&year=...&type=...&page=...
+  // 1. Genre priority; the active adapter owns the upstream serialization.
   if (genre) {
     return {
       supported: true,
@@ -217,7 +217,7 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 2. Country Priority: /api/quoc-gia/{country}?year=...&type=...&page=...
+  // 2. Country priority; the active adapter owns the upstream serialization.
   if (country) {
     return {
       supported: true,
@@ -229,9 +229,9 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 3. Year Priority: /api/nam/{year}?page=...
+  // 3. Year priority.
   if (year) {
-    // VSMov server endpoint /api/nam/{year} does not support type parameter without genre/country
+    // Keep the public legacy combination explicit rather than silently dropping type.
     if (type) {
       return {
         supported: false,
@@ -250,7 +250,7 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 4. Type Priority: /api/danh-sach/phim-bo or /api/danh-sach/phim-le
+  // 4. Type priority.
   if (type) {
     return {
       supported: true,
@@ -262,7 +262,7 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 5. Default Unfiltered: /api/danh-sach/phim-moi-cap-nhat
+  // 5. Default unfiltered catalog.
   return {
     supported: true,
     request: {

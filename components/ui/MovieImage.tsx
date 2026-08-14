@@ -11,7 +11,7 @@ interface MovieImageProps extends Omit<ImageProps, 'src' | 'onError'> {
   aspectRatio?: 'poster' | 'backdrop' | 'square' | 'custom';
 }
 
-const DEFAULT_PLACEHOLDER = 'https://picsum.photos/seed/vsmov-placeholder/400/600';
+const DEFAULT_PLACEHOLDER = 'https://picsum.photos/seed/phevo-placeholder/400/600';
 
 export default function MovieImage({
   src,

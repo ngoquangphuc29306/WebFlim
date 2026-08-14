@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import {
-  activeMovieProvider,
   activeMovieProviderCapabilities,
   browseMovies,
   getCountriesList,
@@ -38,7 +37,6 @@ export default async function DiscoveryPage({ searchParams }: PageProps) {
       pagination={browseResult.pagination}
       title={browseResult.title}
       error={browseResult.error?.message}
-      provider={activeMovieProvider}
       capabilities={activeMovieProviderCapabilities}
     />
   );
