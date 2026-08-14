@@ -19,7 +19,7 @@ export default function ToastContainer() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)] sm:w-auto pointer-events-none"
+      className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-60 flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)] sm:w-auto pointer-events-none"
     >
       {messages.map((m) => {
         const icons = {

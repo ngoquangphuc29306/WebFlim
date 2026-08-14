@@ -3,13 +3,13 @@ import React from 'react';
 export function MovieCardSkeleton() {
   return (
     <div className="flex flex-col w-full h-full animate-pulse select-none">
-      <div className="w-full aspect-[2/3] rounded-lg bg-[#181818] border border-[#222]" />
-      <div className="pt-2.5 space-y-2">
-        <div className="h-4 bg-[#1e1e1e] rounded w-5/6" />
-        <div className="flex items-center gap-2">
-          <div className="h-3 bg-[#141414] rounded w-1/3" />
-          <div className="h-3 bg-[#141414] rounded w-1/4" />
+      <div className="w-full aspect-[2/3] rounded-lg sm:rounded-xl bg-[#141414] border border-[#1f1f1f]" />
+      <div className="pt-2 px-0.5 space-y-1.5">
+        <div className="h-9 sm:h-10 space-y-1">
+          <div className="h-3.5 sm:h-4 bg-[#1c1c1c] rounded w-5/6" />
+          <div className="h-3 sm:h-3.5 bg-[#181818] rounded w-3/5" />
         </div>
+        <div className="h-2.5 bg-[#141414] rounded w-2/5" />
       </div>
     </div>
   );

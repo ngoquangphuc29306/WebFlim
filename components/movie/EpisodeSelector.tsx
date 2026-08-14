@@ -205,10 +205,15 @@ export default function EpisodeSelector({
       {/* Chunk Range Selector for large series (>50 episodes) */}
       {numChunks > 1 && !searchFilter.trim() && (
         <div className="space-y-2">
-          <span className="text-[11px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider">
-            Chọn khoảng tập
-          </span>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] sm:text-xs font-bold text-[#a3a3a3] uppercase tracking-wider">
+              Chọn nhóm tập phim
+            </span>
+            <span className="text-[11px] text-[#737373]">
+              Hiển thị 50 tập/nhóm
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {Array.from({ length: numChunks }).map((_, cIdx) => {
               const startIdx = cIdx * CHUNK_SIZE;
               const endIdx = Math.min((cIdx + 1) * CHUNK_SIZE - 1, episodes.length - 1);
@@ -221,13 +226,14 @@ export default function EpisodeSelector({
                   key={cIdx}
                   type="button"
                   onClick={() => setUserSelectedChunkIdx(cIdx)}
-                  className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  aria-pressed={active}
+                  className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
                     active
-                      ? 'bg-[#262626] border border-[#e50914] text-white font-bold shadow-sm'
-                      : 'bg-[#141414] border border-[#222] text-[#a3a3a3] hover:text-white'
+                      ? 'bg-[#e50914] text-white font-bold shadow-md shadow-[#e50914]/25 ring-1 ring-[#e50914]'
+                      : 'bg-[#181818] border border-[#2a2a2a] text-[#a3a3a3] hover:text-white hover:bg-[#222]'
                   }`}
                 >
-                  {firstEpName} - {lastEpName}
+                  Tập {firstEpName} – {lastEpName}
                 </button>
               );
             })}

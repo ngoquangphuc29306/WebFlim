@@ -2,14 +2,13 @@
 
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/auth-context';
 import { sanitizeInternalReturnTo } from '@/lib/auth/return-to';
-import { Film, LogIn, ArrowLeft, CheckCircle2, ShieldCheck, RefreshCw, AlertCircle } from 'lucide-react';
+import { Film, ArrowLeft, CheckCircle2, ShieldCheck, RefreshCw, AlertCircle } from 'lucide-react';
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { user, signInWithGoogle, isConfigured, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -22,17 +21,17 @@ function LoginContent() {
 
   if (user) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 animate-scale-in">
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 shadow-lg shadow-emerald-500/10">
           <CheckCircle2 className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Bạn đã đăng nhập</h1>
-        <p className="text-neutral-400 max-w-sm mb-6 text-sm">
+        <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bạn đã đăng nhập</h1>
+        <p className="text-[#a3a3a3] max-w-sm mb-6 text-sm">
           Tài khoản: <span className="text-white font-medium">{user.email}</span>
         </p>
         <Link
           href={returnTo}
-          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#e50914] hover:bg-[#b80710] text-white font-medium text-sm rounded-lg transition-colors shadow-lg shadow-[#e50914]/20"
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#e50914] hover:bg-[#b80710] text-white font-semibold text-sm rounded-xl transition-colors shadow-lg shadow-[#e50914]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
           Tiếp tục trải nghiệm
         </Link>
@@ -56,21 +55,23 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md bg-[#121212] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-md">
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#e50914]/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-[75vh] flex items-center justify-center px-4 py-10 sm:py-16">
+      <div className="w-full max-w-md bg-[#121212] border border-[#262626] rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        {/* Subtle Ambient Red Tint in top corner */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#e50914]/10 rounded-full blur-3xl pointer-events-none" />
 
+        {/* Brand Header */}
         <div className="text-center mb-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-2xl font-extrabold tracking-tight text-white hover:opacity-90 transition-opacity mb-3"
+            aria-label="Về trang chủ PHEVO"
+            className="inline-flex items-center gap-2 text-2xl font-black tracking-tight text-white hover:opacity-90 transition-opacity mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded-lg"
           >
             <Film className="w-7 h-7 text-[#e50914]" />
             <span>PHE<span className="text-[#e50914]">VO</span></span>
           </Link>
-          <p className="text-sm text-neutral-400 mt-1 leading-relaxed">
-            Đăng nhập để đồng bộ danh sách yêu thích, lịch sử xem và tiến trình phát phim giữa tất cả các thiết bị.
+          <p className="text-xs sm:text-sm text-[#a3a3a3] mt-1 leading-relaxed">
+            Đăng nhập để đồng bộ danh sách phim yêu thích và lịch sử xem trên mọi thiết bị.
           </p>
         </div>
 
@@ -83,21 +84,23 @@ function LoginContent() {
 
         {!isConfigured && (
           <div className="mb-6 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs sm:text-sm leading-relaxed">
-            Lưu ý: Dự án Supabase chưa được kết nối biến môi trường (`NEXT_PUBLIC_SUPABASE_URL`). Bạn vẫn có thể dùng PHEVO ở chế độ Khách (lưu dữ liệu trên thiết bị này).
+            Lưu ý: Dự án Supabase chưa được cấu hình. Bạn vẫn có thể dùng PHEVO ở chế độ Khách với đầy đủ tính năng lưu trữ trên thiết bị này.
           </div>
         )}
 
         <div className="space-y-4">
           <button
+            type="button"
             onClick={handleGoogleLogin}
             disabled={isSubmitting || isLoading || !isConfigured}
-            className="w-full h-12 bg-white text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-3 relative overflow-hidden group"
+            aria-label="Đăng nhập tài khoản Google"
+            className="w-full h-12 bg-white text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-3 relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] min-h-[44px]"
           >
             {isSubmitting ? (
               <RefreshCw className="w-5 h-5 animate-spin text-neutral-600" />
             ) : (
               <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -120,36 +123,35 @@ function LoginContent() {
             )}
           </button>
 
-          <div className="relative my-6 text-center text-xs text-neutral-500 uppercase tracking-widest">
+          <div className="relative my-6 text-center text-xs text-[#737373] uppercase tracking-widest">
             <span className="bg-[#121212] px-3 z-10 relative">HOẶC</span>
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10" />
+              <div className="w-full border-t border-[#262626]" />
             </div>
           </div>
 
           <Link
             href={returnTo}
-            className="w-full h-11 border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-neutral-300 font-medium text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full h-11 border border-[#2a2a2a] hover:border-[#383838] bg-[#181818] hover:bg-[#202020] text-[#d4d4d4] hover:text-white font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] min-h-[44px]"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Tiếp tục sử dụng không cần đăng nhập</span>
           </Link>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/5 space-y-2 text-xs text-neutral-400">
-          <div className="flex items-center gap-2 text-neutral-300">
+        <div className="mt-8 pt-6 border-t border-[#222222] space-y-2 text-xs text-[#a3a3a3]">
+          <div className="flex items-center gap-2 text-[#d4d4d4] font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Đăng nhập để đồng bộ dữ liệu cá nhân</span>
+            <span>Chế độ Khách & Đồng bộ Dữ liệu</span>
           </div>
-          <p className="text-neutral-500 text-[11px] leading-relaxed">
-            PHEVO chỉ sử dụng tài khoản Google để xác thực và đồng bộ dữ liệu xem phim cá nhân. Bạn vẫn có thể xem phim hoàn toàn miễn phí mà không cần tạo tài khoản.
+          <p className="text-[#737373] text-[11px] leading-relaxed">
+            PHEVO hoạt động cục bộ (local-first) hoàn hảo mà không cần đăng nhập. Khi đăng nhập bằng tài khoản Google, dữ liệu yêu thích và lịch sử xem của bạn sẽ được lưu trữ an toàn trên đám mây để sử dụng trên nhiều thiết bị.
           </p>
         </div>
       </div>
     </div>
   );
 }
-
 export default function LoginPage() {
   return (
     <Suspense

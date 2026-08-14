@@ -168,7 +168,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
   };
 
   const handleKeyDownSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!searchFocused) return;
+    if (!searchFocused && e.key !== 'Enter') return;
 
     const isLiveSearch = searchQuery.trim().length >= 2;
     const maxIndex = isLiveSearch ? suggestions.length - 1 : recentSearches.length - 1;
@@ -210,11 +210,11 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
             setMobileSearchOpen(true);
             setSearchFocused(true);
           }}
-          className="sm:hidden p-2 text-[#a3a3a3] hover:text-white rounded-full hover:bg-[#141414] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+          className="sm:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#a3a3a3] hover:text-white rounded-full hover:bg-[#141414] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
           aria-label="Mở tìm kiếm"
           title="Tìm kiếm phim"
         >
-          <Search className="w-5 h-5" />
+          <Search className="w-4 h-4" />
         </button>
       )}
 
@@ -233,7 +233,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
           onFocus={() => setSearchFocused(true)}
           onKeyDown={handleKeyDownSearch}
           aria-label="Tìm kiếm phim"
-          className="w-full sm:w-56 md:w-64 bg-[#141414] text-white text-xs sm:text-sm pl-8 sm:pl-9 pr-8 sm:pr-3 py-1.5 sm:py-2 rounded-full border border-[#262626] focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-all placeholder:text-[#737373]"
+          className="w-full sm:w-56 md:w-64 bg-[#121212] text-white text-xs sm:text-sm pl-8 sm:pl-9 pr-8 sm:pr-3 py-1.5 sm:py-2 rounded-full border border-[#2a2a2a] focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-all placeholder:text-[#737373]"
         />
         <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#737373] absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
         {mobileSearchOpen && (
@@ -243,7 +243,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
               setMobileSearchOpen(false);
               setSearchFocused(false);
             }}
-            className="sm:hidden text-xs font-medium text-[#a3a3a3] hover:text-white px-2 py-1 shrink-0"
+            className="sm:hidden text-xs font-medium text-[#a3a3a3] hover:text-white px-2.5 py-1.5 min-h-[36px] flex items-center shrink-0 rounded-lg hover:bg-[#1a1a1a]"
           >
             Hủy
           </button>
@@ -252,7 +252,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
 
       {/* Suggestions / Recent Searches Overlay */}
       {searchFocused && (
-        <div className="fixed sm:absolute top-14 sm:top-full right-2 left-2 sm:left-auto sm:right-0 sm:w-96 bg-[#121212] border border-[#262626] rounded-xl mt-1 shadow-2xl overflow-hidden z-50 animate-in fade-in duration-150 max-h-[75vh] overflow-y-auto">
+        <div className="fixed sm:absolute top-14 sm:top-full right-2 left-2 sm:left-auto sm:right-0 sm:w-96 bg-[#121212] border border-[#2a2a2a] rounded-xl mt-1.5 shadow-2xl overflow-hidden z-50 animate-in fade-in duration-150 max-h-[75vh] overflow-y-auto">
           {searchQuery.trim().length >= 2 ? (
             searching ? (
               <div className="p-4 text-center text-xs text-[#a3a3a3] flex items-center justify-center gap-2">
@@ -271,11 +271,11 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                         addRecentSearch(item.title);
                         setSearchFocused(false);
                       }}
-                      className={`flex items-center gap-3 p-2.5 transition-colors group focus-visible:outline-none ${
-                        isHighlighted ? 'bg-[#222222] text-white' : 'hover:bg-[#1a1a1a]'
+                      className={`flex items-center gap-3 p-2.5 transition-colors group focus-visible:outline-none focus-visible:bg-[#202020] ${
+                        isHighlighted ? 'bg-[#202020] text-white' : 'hover:bg-[#181818]'
                       }`}
                     >
-                      <div className="relative w-10 h-14 rounded overflow-hidden bg-[#1f1f1f] shrink-0">
+                      <div className="relative w-10 h-14 rounded overflow-hidden bg-[#1f1f1f] shrink-0 border border-[#2a2a2a]">
                         <MovieImage
                           src={item.thumbUrl || item.posterUrl}
                           alt={item.title}
@@ -293,14 +293,14 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                           {item.title}
                         </h4>
                         {item.originalTitle && (
-                          <p className="text-[11px] text-[#a3a3a3] truncate">
+                          <p className="text-[11px] text-[#a3a3a3] truncate mt-0.5">
                             {item.originalTitle}
                           </p>
                         )}
                         <div className="flex items-center gap-2 mt-1 text-[10px] text-[#737373]">
                           {item.year && <span>{item.year}</span>}
                           {item.episodeCurrent && (
-                            <span className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-[#a3a3a3]">
+                            <span className="bg-[#1a1a1a] border border-[#2a2a2a] px-1.5 py-0.5 rounded text-[#a3a3a3]">
                               {item.episodeCurrent}
                             </span>
                           )}
@@ -313,7 +313,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                 <button
                   type="button"
                   onClick={(e) => handleSearchSubmit(e)}
-                  className="w-full p-2.5 text-center text-xs text-[#e50914] font-medium hover:bg-[#1a1a1a] transition-colors flex items-center justify-center gap-1"
+                  className="w-full p-2.5 text-center text-xs text-[#e50914] font-medium hover:bg-[#181818] transition-colors flex items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914]"
                 >
                   Xem tất cả kết quả cho &quot;{searchQuery}&quot;
                 </button>
@@ -335,7 +335,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                   <button
                     type="button"
                     onClick={handleClearAllRecent}
-                    className="text-[11px] text-[#737373] hover:text-[#e50914] transition-colors flex items-center gap-1"
+                    className="text-[11px] text-[#737373] hover:text-[#e50914] transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:underline"
                   >
                     <Trash2 className="w-3 h-3" />
                     <span>Xóa tất cả</span>
@@ -356,7 +356,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                         }}
                         className={`group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                           isHighlighted
-                            ? 'bg-[#222] text-white'
+                            ? 'bg-[#202020] text-white'
                             : 'text-[#d4d4d4] hover:bg-[#181818] hover:text-white'
                         }`}
                       >
@@ -364,7 +364,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                         <button
                           type="button"
                           onClick={(e) => handleRemoveRecentSearch(e, item)}
-                          className="p-1 text-[#525252] hover:text-[#e50914] rounded transition-colors opacity-80 group-hover:opacity-100"
+                          className="p-1 min-w-[28px] min-h-[28px] flex items-center justify-center text-[#525252] hover:text-[#e50914] rounded transition-colors opacity-80 group-hover:opacity-100"
                           title="Xóa khỏi lịch sử"
                         >
                           <X className="w-3.5 h-3.5" />

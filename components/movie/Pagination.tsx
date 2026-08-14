@@ -61,12 +61,13 @@ export default function Pagination({
   const pages = getPageNumbers();
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 my-12">
+    <nav aria-label="Phân trang" className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 my-8 sm:my-12">
       {/* Previous Button */}
       {currentPage > 1 ? (
         <Link
           href={buildUrl(currentPage - 1)}
-          className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#141414] border border-[#262626] text-sm text-[#d4d4d4] hover:text-white hover:bg-[#1f1f1f] transition-colors"
+          aria-label="Chuyển đến trang trước"
+          className="flex items-center gap-1 px-3 sm:px-3.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-[#141414] border border-[#262626] text-xs sm:text-sm font-medium text-[#d4d4d4] hover:text-white hover:bg-[#202020] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
         >
           <ChevronLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Trang trước</span>
@@ -74,7 +75,9 @@ export default function Pagination({
       ) : (
         <button
           disabled
-          className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#0e0e0e] border border-[#1a1a1a] text-sm text-[#525252] cursor-not-allowed"
+          aria-disabled="true"
+          aria-label="Trang trước (không khả dụng)"
+          className="flex items-center gap-1 px-3 sm:px-3.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-[#0e0e0e] border border-[#1a1a1a] text-xs sm:text-sm text-[#404040] cursor-not-allowed"
         >
           <ChevronLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Trang trước</span>
@@ -82,11 +85,11 @@ export default function Pagination({
       )}
 
       {/* Page Numbers */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5">
         {pages.map((p, idx) => {
           if (p === '...') {
             return (
-              <span key={`dots-${idx}`} className="px-2 py-1 text-[#737373] text-sm">
+              <span key={`dots-${idx}`} className="px-1.5 sm:px-2 py-1 text-[#737373] text-xs sm:text-sm font-medium select-none">
                 ...
               </span>
             );
@@ -99,10 +102,12 @@ export default function Pagination({
             <Link
               key={pageNum}
               href={buildUrl(pageNum)}
-              className={`min-w-9 h-9 flex items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
+              aria-current={isCurrent ? 'page' : undefined}
+              aria-label={`Trang ${pageNum}`}
+              className={`min-w-[38px] sm:min-w-9 h-[38px] sm:h-9 flex items-center justify-center rounded-xl text-xs sm:text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                 isCurrent
-                  ? 'bg-[#e50914] text-white shadow-lg shadow-[#e50914]/20'
-                  : 'bg-[#141414] border border-[#262626] text-[#a3a3a3] hover:text-white hover:bg-[#1f1f1f]'
+                  ? 'bg-[#e50914] text-white shadow-md shadow-[#e50914]/25'
+                  : 'bg-[#141414] border border-[#262626] text-[#a3a3a3] hover:text-white hover:bg-[#202020]'
               }`}
             >
               {pageNum}
@@ -115,7 +120,8 @@ export default function Pagination({
       {currentPage < totalPages ? (
         <Link
           href={buildUrl(currentPage + 1)}
-          className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#141414] border border-[#262626] text-sm text-[#d4d4d4] hover:text-white hover:bg-[#1f1f1f] transition-colors"
+          aria-label="Chuyển đến trang sau"
+          className="flex items-center gap-1 px-3 sm:px-3.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-[#141414] border border-[#262626] text-xs sm:text-sm font-medium text-[#d4d4d4] hover:text-white hover:bg-[#202020] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
         >
           <span className="hidden sm:inline">Trang sau</span>
           <ChevronRight className="w-4 h-4" />
@@ -123,12 +129,14 @@ export default function Pagination({
       ) : (
         <button
           disabled
-          className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#0e0e0e] border border-[#1a1a1a] text-sm text-[#525252] cursor-not-allowed"
+          aria-disabled="true"
+          aria-label="Trang sau (không khả dụng)"
+          className="flex items-center gap-1 px-3 sm:px-3.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-[#0e0e0e] border border-[#1a1a1a] text-xs sm:text-sm text-[#404040] cursor-not-allowed"
         >
           <span className="hidden sm:inline">Trang sau</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       )}
-    </div>
+    </nav>
   );
 }

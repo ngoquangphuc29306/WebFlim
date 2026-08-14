@@ -25,10 +25,12 @@ export default function UserAccountMenu() {
     return (
       <Link
         href="/dang-nhap"
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1a1a1a] hover:bg-[#e50914] text-white text-xs sm:text-sm font-medium border border-[#333] hover:border-[#e50914] transition-all shadow-sm"
+        aria-label="Đăng nhập"
+        title="Đăng nhập"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181818] hover:bg-[#e50914] text-white text-xs sm:text-sm font-medium border border-[#2a2a2a] hover:border-[#e50914] transition-all shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
       >
-        <UserIcon className="w-4 h-4" />
-        <span>Đăng nhập</span>
+        <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        <span className="hidden sm:inline">Đăng nhập</span>
       </Link>
     );
   }
@@ -45,7 +47,7 @@ export default function UserAccountMenu() {
         aria-label="Tài khoản cá nhân"
         className="relative flex items-center gap-2 p-1 rounded-full hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
       >
-        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#222] border border-white/20 flex items-center justify-center">
+        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#181818] border border-[#2a2a2a] flex items-center justify-center">
           {avatarUrl ? (
             <Image
               src={avatarUrl}
@@ -55,7 +57,7 @@ export default function UserAccountMenu() {
               className="object-cover"
             />
           ) : (
-            <UserIcon className="w-4 h-4 text-neutral-300" />
+            <UserIcon className="w-4 h-4 text-[#a3a3a3]" />
           )}
         </div>
 
@@ -87,14 +89,14 @@ export default function UserAccountMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-[#121212] border border-[#262626] rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in duration-150 divide-y divide-white/5">
+        <div className="absolute right-0 top-full mt-2 w-64 bg-[#121212] border border-[#2a2a2a] rounded-xl p-3 shadow-2xl z-50 animate-in fade-in duration-150 divide-y divide-[#1f1f1f]">
           {/* User Info Header */}
           <div className="pb-3 px-1">
-            <div className="font-semibold text-sm text-white truncate">{displayName}</div>
-            <div className="text-xs text-neutral-400 truncate">{user.email}</div>
+            <div className="font-semibold text-sm text-[#f5f5f5] truncate">{displayName}</div>
+            <div className="text-xs text-[#a3a3a3] truncate">{user.email}</div>
 
             {/* Sync status detail */}
-            <div className="mt-2.5 flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/5 text-neutral-300">
+            <div className="mt-2.5 flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg bg-[#181818] border border-[#2a2a2a] text-[#d4d4d4]">
               {syncStatus === 'synced' && (
                 <>
                   <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -133,7 +135,7 @@ export default function UserAccountMenu() {
             <Link
               href="/yeu-thich"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#d4d4d4] hover:text-white hover:bg-[#1c1c1c] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914]"
             >
               <Bookmark className="w-4 h-4 text-[#e50914]" />
               <span>Phim Yêu Thích</span>
@@ -141,7 +143,7 @@ export default function UserAccountMenu() {
             <Link
               href="/lich-su"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#d4d4d4] hover:text-white hover:bg-[#1c1c1c] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914]"
             >
               <History className="w-4 h-4 text-[#e50914]" />
               <span>Lịch Sử Xem</span>
@@ -156,7 +158,7 @@ export default function UserAccountMenu() {
                 setIsOpen(false);
                 signOut();
               }}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[38px] rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-500"
             >
               <LogOut className="w-4 h-4" />
               <span>Đăng xuất</span>
