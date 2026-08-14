@@ -18,21 +18,32 @@ import {
   Server,
   Layers,
   Check,
+  ExternalLink,
 } from 'lucide-react';
-import { MovieDetailModel } from '@/types/movie';
+import type { EnrichedMovieDetailModel } from '@/types/tmdb';
 import { useWatchlist, toggleWatchlist } from '@/lib/utils/favorites';
 import { usePlaybackProgress, resolveResumeTarget } from '@/lib/persistence/progress';
 import { toast } from '@/lib/utils/toast';
 import MovieImage from '@/components/ui/MovieImage';
 
 interface MovieDetailsProps {
-  movie: MovieDetailModel;
+  movie: EnrichedMovieDetailModel;
 }
 
 export default function MovieDetails({ movie }: MovieDetailsProps) {
   const { isSaved, isMounted } = useWatchlist();
   const saved = isMounted && isSaved(movie.slug);
   const { progressList } = usePlaybackProgress();
+  const presentation = movie.tmdbPresentation;
+  const displayTitle = presentation?.title || movie.title;
+  const displayOriginalTitle = presentation?.originalTitle || movie.originalTitle;
+  const displayOverview = presentation?.overview || movie.synopsis;
+  const displayPoster = presentation?.posterUrl || movie.posterUrl;
+  const displayBackdrop = presentation?.backdropUrl || movie.thumbUrl || movie.posterUrl;
+  const displayYear = presentation?.year || movie.year;
+  const displayRuntime = presentation?.runtimeMinutes ? `${presentation.runtimeMinutes} phút` : movie.duration;
+  const displayRating = presentation?.voteAverage ?? movie.rating;
+  const displayVoteCount = presentation?.voteCount ?? movie.voteCount;
   const [copied, setCopied] = useState(false);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
   const [activeServerIdx, setActiveServerIdx] = useState(0);
@@ -95,6 +106,14 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
   const validDirectors = (movie.directors || []).filter(
     (d) => d && d !== 'N/A' && d !== 'Đang cập nhật' && d !== 'undefined' && d.trim().length > 0
   );
+  const displayDirectors = presentation?.directors?.length
+    ? presentation.directors.map((director) => director.name)
+    : presentation?.creators?.length
+      ? presentation.creators.map((creator) => creator.name)
+      : validDirectors;
+  const displayActors = presentation?.cast?.length
+    ? presentation.cast.map((actor) => actor.character ? `${actor.name} (${actor.character})` : actor.name)
+    : validActors;
 
   const totalEpisodes = movie.episodes.reduce((acc, srv) => acc + srv.items.length, 0);
   const activeServer = movie.episodes[activeServerIdx] || movie.episodes[0];
@@ -108,16 +127,16 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
     (activeChunkIdx + 1) * CHUNK_SIZE
   );
 
-  const longSynopsis = (movie.synopsis || '').length > 220;
+  const longSynopsis = (displayOverview || '').length > 220;
 
   return (
     <div className="relative text-white min-h-screen pb-16">
       {/* Backdrop Image Banner */}
       <div className="relative w-full h-[55vh] min-h-[400px] max-h-[600px] bg-[#080808] overflow-hidden">
         <MovieImage
-          src={movie.thumbUrl || movie.posterUrl}
-          alt={movie.title}
-          title={movie.title}
+          src={displayBackdrop}
+          alt={displayTitle}
+          title={displayTitle}
           priority
           sizes="100vw"
           aspectRatio="backdrop"
@@ -136,9 +155,9 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
           <div className="w-48 sm:w-64 md:w-72 shrink-0 mx-auto md:mx-0">
             <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden bg-[#141414] border-2 border-[#2a2a2a] shadow-2xl group">
               <MovieImage
-                src={movie.posterUrl}
-                alt={movie.title}
-                title={movie.title}
+                src={displayPoster}
+                alt={displayTitle}
+                title={displayTitle}
                 priority
                 sizes="(max-width: 768px) 256px, 288px"
                 aspectRatio="poster"
@@ -194,6 +213,17 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
                   <span>{copied ? 'Đã chép!' : 'Chia sẻ'}</span>
                 </button>
               </div>
+              {presentation?.trailer && (
+                <a
+                  href={presentation.trailer.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#141414] border border-[#2a2a2a] text-[#d4d4d4] hover:text-white hover:border-[#e50914] text-xs font-semibold transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Xem trailer</span>
+                </a>
+              )}
             </div>
           </div>
 
@@ -201,40 +231,40 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
           <div className="flex-1 space-y-5 pt-2 w-full">
             <div>
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-[#f5f5f5] tracking-tight leading-tight">
-                {movie.title}
+                {displayTitle}
               </h1>
-              {movie.originalTitle && (
+              {displayOriginalTitle && (
                 <p className="text-base sm:text-lg text-[#a3a3a3] font-medium mt-1">
-                  {movie.originalTitle}
+                  {displayOriginalTitle}
                 </p>
               )}
             </div>
 
             {/* Quick Metadata Stats */}
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs sm:text-sm text-[#d4d4d4]">
-              {movie.rating && movie.rating > 0 && (
+              {displayRating && displayRating > 0 && (
                 <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold px-3 py-1 rounded-lg">
                   <Star className="w-4 h-4 fill-current" />
-                  <span>{movie.rating.toFixed(1)} / 10</span>
-                  {movie.voteCount && (
+                  <span>{displayRating.toFixed(1)} / 10{presentation?.ratingSource === 'tmdb' ? ' · TMDB' : ''}</span>
+                  {displayVoteCount && (
                     <span className="text-[11px] text-[#a3a3a3] font-normal">
-                      ({movie.voteCount} vote)
+                      ({displayVoteCount} vote)
                     </span>
                   )}
                 </div>
               )}
 
-              {movie.year && (
+              {displayYear && (
                 <div className="flex items-center gap-1.5 bg-[#141414] border border-[#262626] px-3 py-1 rounded-lg">
                   <Calendar className="w-4 h-4 text-[#a3a3a3]" />
-                  <span>{movie.year}</span>
+                  <span>{displayYear}</span>
                 </div>
               )}
 
-              {movie.duration && (
+              {displayRuntime && (
                 <div className="flex items-center gap-1.5 bg-[#141414] border border-[#262626] px-3 py-1 rounded-lg">
                   <Clock className="w-4 h-4 text-[#a3a3a3]" />
-                  <span>{movie.duration}</span>
+                  <span>{displayRuntime}</span>
                 </div>
               )}
 
@@ -297,7 +327,7 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
                     !synopsisExpanded && longSynopsis ? 'line-clamp-4' : ''
                   }`}
                 >
-                  {movie.synopsis || 'Nội dung phim đang được cập nhật.'}
+                  {displayOverview || 'Nội dung phim đang được cập nhật.'}
                 </p>
                 {longSynopsis && (
                   <button
@@ -313,25 +343,68 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
             </div>
 
             {/* Directors & Cast */}
-            {(validDirectors.length > 0 || validActors.length > 0) && (
+            {(displayDirectors.length > 0 || displayActors.length > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {validDirectors.length > 0 && (
+                {displayDirectors.length > 0 && (
                   <div className="bg-[#101010] border border-[#222] p-4 rounded-xl space-y-1">
                     <span className="text-xs font-semibold text-[#737373] uppercase">Đạo diễn</span>
-                    <p className="text-sm font-medium text-white">{validDirectors.join(', ')}</p>
+                    <p className="text-sm font-medium text-white">{displayDirectors.join(', ')}</p>
                   </div>
                 )}
 
-                {validActors.length > 0 && (
+                {displayActors.length > 0 && (
                   <div className="bg-[#101010] border border-[#222] p-4 rounded-xl space-y-1">
                     <span className="text-xs font-semibold text-[#737373] uppercase flex items-center gap-1">
                       <Users className="w-3.5 h-3.5 text-[#e50914]" />
                       Diễn viên
                     </span>
                     <p className="text-xs sm:text-sm text-[#d4d4d4] leading-relaxed line-clamp-3">
-                      {validActors.join(', ')}
+                      {displayActors.join(', ')}
                     </p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {presentation?.cast && presentation.cast.length > 0 && (
+              <div className="bg-[#101010] border border-[#222] p-4 rounded-xl space-y-3">
+                <span className="text-xs font-semibold text-[#737373] uppercase flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-[#e50914]" />
+                  Diễn viên từ TMDB
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {presentation.cast.map((actor) => (
+                    <div key={actor.id} className="min-w-0">
+                      {actor.profileUrl ? (
+                        <MovieImage
+                          src={actor.profileUrl}
+                          alt={actor.name}
+                          title={actor.name}
+                          aspectRatio="square"
+                          sizes="120px"
+                          className="rounded-lg"
+                        />
+                      ) : (
+                        <div className="aspect-square rounded-lg bg-[#181818] border border-[#262626] flex items-center justify-center text-[#737373] text-xs text-center px-2">
+                          {actor.name}
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs font-semibold text-white truncate">{actor.name}</p>
+                      {actor.character && <p className="text-[11px] text-[#737373] truncate">{actor.character}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {presentation?.season && (
+              <div className="bg-[#101010] border border-[#222] p-4 rounded-xl space-y-1">
+                <span className="text-xs font-semibold text-[#737373] uppercase">Thông tin mùa phim</span>
+                <p className="text-sm font-semibold text-white">
+                  {presentation.season.name} · Phần {presentation.season.seasonNumber}
+                </p>
+                {presentation.season.overview && (
+                  <p className="text-xs text-[#a3a3a3] leading-relaxed">{presentation.season.overview}</p>
                 )}
               </div>
             )}

@@ -1,4 +1,134 @@
-import { CatalogFilters, CatalogResolverResult } from '@/types/movie';
+import {
+  CatalogFilters,
+  CatalogResolverResult,
+  MovieBrowseFilter,
+  MovieBrowseLanguage,
+  MovieBrowseOrder,
+  MovieBrowseSort,
+  MovieBrowseType,
+  MovieProviderCapabilities,
+} from '@/types/movie';
+
+const MIN_RELEASE_YEAR = 1900;
+const maxReleaseYear = () => new Date().getFullYear() + 1;
+const browseTypes: readonly MovieBrowseType[] = ['phim-le', 'phim-bo', 'tv-shows', 'hoat-hinh'];
+const browseLanguages: readonly MovieBrowseLanguage[] = ['vietsub', 'thuyet-minh', 'long-tieng'];
+const browseSorts: readonly MovieBrowseSort[] = ['updated', 'created', 'year'];
+const browseOrders: readonly MovieBrowseOrder[] = ['asc', 'desc'];
+
+function cleanValue(value: string | string[] | undefined): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function validYear(value: string | undefined): number | undefined {
+  if (!value || !/^\d{4}$/.test(value)) return undefined;
+  const year = Number(value);
+  return year >= MIN_RELEASE_YEAR && year <= maxReleaseYear() ? year : undefined;
+}
+
+function enumValue<T extends string>(value: string | undefined, allowed: readonly T[]): T | undefined {
+  return value && allowed.includes(value as T) ? value as T : undefined;
+}
+
+function normalizeBrowseType(value: string | undefined): MovieBrowseType | undefined {
+  if (value === 'series') return 'phim-bo';
+  if (value === 'single') return 'phim-le';
+  return enumValue(value, browseTypes);
+}
+
+/** Parse the public /kham-pha query contract into one normalized filter state. */
+export function parseMovieBrowseFilter(searchParams: {
+  [key: string]: string | string[] | undefined;
+}): MovieBrowseFilter {
+  const year = validYear(cleanValue(searchParams.year));
+  const yearFrom = validYear(cleanValue(searchParams.yearFrom));
+  const yearTo = validYear(cleanValue(searchParams.yearTo));
+  const validRange = !year && yearFrom && yearTo && yearFrom <= yearTo
+    ? { yearFrom, yearTo }
+    : {};
+  const parsedPage = Number(cleanValue(searchParams.page));
+
+  return {
+    type: normalizeBrowseType(cleanValue(searchParams.type)),
+    genre: cleanValue(searchParams.genre),
+    country: cleanValue(searchParams.country),
+    year,
+    ...validRange,
+    language: enumValue(cleanValue(searchParams.language), browseLanguages),
+    sort: enumValue(cleanValue(searchParams.sort), browseSorts),
+    order: enumValue(cleanValue(searchParams.order), browseOrders),
+    page: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+  };
+}
+
+/** Build the canonical public URL without provider-specific query names. */
+export function buildMovieBrowseUrl(filter: MovieBrowseFilter): string {
+  const params = new URLSearchParams();
+  if (filter.type) params.set('type', filter.type);
+  if (filter.genre) params.set('genre', filter.genre);
+  if (filter.country) params.set('country', filter.country);
+  if (filter.year) params.set('year', String(filter.year));
+  else if (filter.yearFrom && filter.yearTo && filter.yearFrom <= filter.yearTo) {
+    params.set('yearFrom', String(filter.yearFrom));
+    params.set('yearTo', String(filter.yearTo));
+  }
+  if (filter.language) params.set('language', filter.language);
+  if (filter.sort) params.set('sort', filter.sort);
+  if (filter.order) params.set('order', filter.order);
+  if (filter.page && filter.page > 1) params.set('page', String(filter.page));
+  const query = params.toString();
+  return query ? `/kham-pha?${query}` : '/kham-pha';
+}
+
+/** Filter changes are navigation changes and therefore always restart at page one. */
+export function withBrowseFilterChange(
+  current: MovieBrowseFilter,
+  change: Partial<MovieBrowseFilter>,
+): MovieBrowseFilter {
+  const next = { ...current, ...change };
+  const changedNonPageKey = Object.keys(change).some((key) => key !== 'page' && (
+    current[key as keyof MovieBrowseFilter] !== next[key as keyof MovieBrowseFilter]
+  ));
+  return { ...next, page: changedNonPageKey ? 1 : Math.max(1, next.page ?? 1) };
+}
+
+export function countActiveBrowseFilters(filter: MovieBrowseFilter): number {
+  return [
+    filter.type,
+    filter.genre,
+    filter.country,
+    filter.year ?? (filter.yearFrom && filter.yearTo ? `${filter.yearFrom}-${filter.yearTo}` : undefined),
+    filter.language,
+    filter.sort,
+    filter.order,
+  ].filter(Boolean).length;
+}
+
+/**
+ * Keep UI capability messaging provider-neutral. Adapters remain responsible
+ * for their actual upstream query serialization and any narrower validation.
+ */
+export function getUnsupportedBrowseFilterReason(
+  filter: MovieBrowseFilter,
+  capabilities: MovieProviderCapabilities,
+): string | undefined {
+  if ((filter.yearFrom || filter.yearTo) && (!filter.yearFrom || !filter.yearTo || filter.yearFrom > filter.yearTo)) {
+    return 'Khoảng năm không hợp lệ. Hãy nhập đủ năm bắt đầu và năm kết thúc.';
+  }
+  if (filter.type && !capabilities.browseTypes.includes(filter.type)) {
+    return 'Nguồn dữ liệu hiện tại chưa hỗ trợ loại phim này.';
+  }
+  if ((filter.yearFrom || filter.yearTo) && !capabilities.yearRange) {
+    return 'Nguồn dữ liệu hiện tại chưa hỗ trợ lọc theo khoảng năm.';
+  }
+  if (filter.language && !capabilities.languageFilter) {
+    return 'Nguồn dữ liệu hiện tại chưa hỗ trợ lọc theo ngôn ngữ.';
+  }
+  if ((filter.sort || filter.order) && !capabilities.sorting) {
+    return 'Nguồn dữ liệu hiện tại chưa hỗ trợ sắp xếp tùy chọn.';
+  }
+  return undefined;
+}
 
 /**
  * Parses raw search parameters from URL into typed CatalogFilters.
@@ -69,13 +199,13 @@ export function countActiveFilters(filters: CatalogFilters): number {
 }
 
 /**
- * Resolves active filters into a deterministic VSMov API request strategy.
+ * Resolves legacy catalog filters into a deterministic provider request strategy.
  * Prevents silent dropping of unsupported query parameter combinations.
  */
 export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverResult {
   const { genre, country, year, type, page = 1 } = filters;
 
-  // 1. Genre Priority: /api/the-loai/{genre}?country=...&year=...&type=...&page=...
+  // 1. Genre priority; the active adapter owns the upstream serialization.
   if (genre) {
     return {
       supported: true,
@@ -87,7 +217,7 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 2. Country Priority: /api/quoc-gia/{country}?year=...&type=...&page=...
+  // 2. Country priority; the active adapter owns the upstream serialization.
   if (country) {
     return {
       supported: true,
@@ -99,9 +229,9 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 3. Year Priority: /api/nam/{year}?page=...
+  // 3. Year priority.
   if (year) {
-    // VSMov server endpoint /api/nam/{year} does not support type parameter without genre/country
+    // Keep the public legacy combination explicit rather than silently dropping type.
     if (type) {
       return {
         supported: false,
@@ -120,7 +250,7 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 4. Type Priority: /api/danh-sach/phim-bo or /api/danh-sach/phim-le
+  // 4. Type priority.
   if (type) {
     return {
       supported: true,
@@ -132,7 +262,7 @@ export function resolveCatalogRequest(filters: CatalogFilters): CatalogResolverR
     };
   }
 
-  // 5. Default Unfiltered: /api/danh-sach/phim-moi-cap-nhat
+  // 5. Default unfiltered catalog.
   return {
     supported: true,
     request: {

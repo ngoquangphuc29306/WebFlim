@@ -1,5 +1,5 @@
 import React from 'react';
-import { getHomepageData, getGenresList } from '@/lib/api/vsmov';
+import { getHomepageData, getGenresList } from '@/lib/api/movies';
 import HeroBanner from '@/components/movie/HeroBanner';
 import MovieRow from '@/components/movie/MovieRow';
 import RecentHistoryRow from '@/components/movie/RecentHistoryRow';

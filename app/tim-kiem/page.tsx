@@ -1,6 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { searchMovies } from '@/lib/api/vsmov';
+import { searchMovies } from '@/lib/api/movies';
 import MovieGrid from '@/components/movie/MovieGrid';
 import { Search } from 'lucide-react';
 

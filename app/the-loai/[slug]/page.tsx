@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { getMoviesByGenre, getGenresList } from '@/lib/api/vsmov';
+import { getMoviesByGenre, getGenresList } from '@/lib/api/movies';
 import MovieGrid from '@/components/movie/MovieGrid';
 import { Tag } from 'lucide-react';
 
