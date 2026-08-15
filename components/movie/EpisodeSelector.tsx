@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Server, ChevronLeft, ChevronRight, Search, Play, ArrowUpDown, Check } from 'lucide-react';
 import { usePlaybackProgress } from '@/lib/persistence/progress';
+import { resolveEpisodeForServer } from './episode-selection';
 
 interface EpisodeItem {
   name: string;
@@ -184,11 +185,19 @@ export default function EpisodeSelector({
           <div className="flex flex-wrap gap-2">
             {servers.map((srv, idx) => {
               const active = idx === currentServerIndex;
+              const targetEpisode = resolveEpisodeForServer({
+                requestedEpisodeSlug: currentEpisodeSlug,
+                targetEpisodes: srv.items,
+              });
+              const serverHref = targetEpisode
+                ? `/xem-phim/${movieSlug}?ep=${targetEpisode.slug}&server=${idx}`
+                : `/xem-phim/${movieSlug}?server=${idx}`;
               return (
                 <Link
                   key={idx}
-                  href={`/xem-phim/${movieSlug}?ep=${currentEpisodeSlug}&server=${idx}`}
-                  className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all ${
+                  href={serverHref}
+                  aria-current={active ? 'page' : undefined}
+                  className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all ${
                     active
                       ? 'bg-[#e50914] text-white shadow-md shadow-[#e50914]/20 border border-[#e50914]'
                       : 'bg-[#181818] border border-[#2a2a2a] text-[#a3a3a3] hover:text-white hover:bg-[#222]'
@@ -285,6 +294,7 @@ export default function EpisodeSelector({
                   key={ep.slug}
                   href={`/xem-phim/${movieSlug}?ep=${ep.slug}&server=${currentServerIndex}`}
                   aria-label={`${labelText}${stateLabel}`}
+                  aria-current={isCurrent ? 'page' : undefined}
                   className={`
                     relative
                     min-h-[42px]
@@ -362,4 +372,3 @@ export default function EpisodeSelector({
     </div>
   );
 }
-

@@ -537,7 +537,8 @@ export default function MovieDetails({ movie, relatedMovies = [] }: MovieDetails
                       setActiveChunkIdx(0);
                     }}
                     type="button"
-                    className={`px-3 py-1 rounded-md text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                    aria-pressed={activeServerIdx === idx}
+                    className={`min-h-[44px] px-3 py-1 rounded-md text-xs font-bold shrink-0 transition-all cursor-pointer ${
                       activeServerIdx === idx
                         ? 'bg-white text-black shadow-md'
                         : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
@@ -553,7 +554,8 @@ export default function MovieDetails({ movie, relatedMovies = [] }: MovieDetails
                 <button
                   type="button"
                   onClick={() => setEpisodeViewMode('list')}
-                  className={`p-1.5 rounded-md transition-colors ${
+                  aria-pressed={episodeViewMode === 'list'}
+                  className={`min-h-[44px] min-w-[44px] p-1.5 rounded-md transition-colors ${
                     episodeViewMode === 'list' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                   title="Xem dạng thẻ chi tiết (Netflix Cards)"
@@ -563,7 +565,8 @@ export default function MovieDetails({ movie, relatedMovies = [] }: MovieDetails
                 <button
                   type="button"
                   onClick={() => setEpisodeViewMode('grid')}
-                  className={`p-1.5 rounded-md transition-colors ${
+                  aria-pressed={episodeViewMode === 'grid'}
+                  className={`min-h-[44px] min-w-[44px] p-1.5 rounded-md transition-colors ${
                     episodeViewMode === 'grid' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                   title="Xem dạng lưới số tập (Grid)"
