@@ -170,6 +170,9 @@ export default async function WatchMoviePage({ params, searchParams }: PageProps
           currentServerIndex={validServerIndex}
           currentEpisodeSlug={activeEpisode?.slug || ''}
           movieSlug={movie.slug}
+          movieTitle={movie.title}
+          posterUrl={movie.posterUrl}
+          thumbUrl={movie.thumbUrl}
         />
       )}
 
