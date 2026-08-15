@@ -58,6 +58,30 @@
   }
 }
 
+/* Keep browser scrollbars consistent with the cinematic dark player surface. */
+html {
+  scrollbar-color: var(--border-default) var(--bg-surface-1);
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-surface-1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-highlight);
+}
+
 /* Custom smooth horizontal scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

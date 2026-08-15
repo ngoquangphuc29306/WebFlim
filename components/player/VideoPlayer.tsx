@@ -13,9 +13,11 @@ import {
   Tv,
   Volume2,
   VolumeX,
+  Volume1,
   Gauge,
   PictureInPicture2,
   Play,
+  Pause,
   X,
   FastForward,
   RotateCcw,
@@ -62,6 +64,20 @@ export type { PlayerMode } from './hooks/useHlsPlayer';
 function formatEpisodeLabel(name: string | undefined, fallback: string): string {
   const label = name?.trim() || fallback;
   return label.toLowerCase().startsWith('tập') ? label : `Tập ${label}`;
+}
+
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
+  const total = Math.floor(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remainder = total % 60;
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainder
+      .toString()
+      .padStart(2, '0')}`;
+  }
+  return `${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
 }
 
 function setVideoProperties(el: HTMLVideoElement, volume: number, muted: boolean, rate: number) {
@@ -123,6 +139,12 @@ function VideoPlayerInner({
   const [loading, setLoading] = useState(true);
   const [useDirectStream, setUseDirectStream] = useState(Boolean(m3u8Url));
   const [playerMode, setPlayerMode] = useState<PlayerMode>('unavailable');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+  const [dragTime, setDragTime] = useState(0);
 
   // Top bar / Overlay visibility state (Netflix auto-hide on inactivity)
   const [isOverlayVisible, setIsOverlayVisible] = useState(true);
@@ -369,6 +391,9 @@ function VideoPlayerInner({
     if (!v || !p.movieSlug || !p.episodeSlug) return;
 
     setVideoProperties(v, prefs.volume, prefs.muted, prefs.playbackRate);
+    if (Number.isFinite(v.duration) && v.duration > 0) {
+      setDuration(v.duration);
+    }
 
     if (hasResumedRef.current) return;
 
@@ -386,6 +411,7 @@ function VideoPlayerInner({
     ) {
       try {
         setVideoCurrentTime(v, saved.currentTime);
+        setCurrentTime(saved.currentTime);
       } catch (err) {
         console.warn('Failed to set resume currentTime:', err);
       }
@@ -394,6 +420,7 @@ function VideoPlayerInner({
 
   const handleEnded = useCallback(() => {
     if (!capabilities.canDetectEnded) return;
+    setIsPlaying(false);
     saveCurrentVideoProgress(true);
 
     if (prefs.autoplayNextEpisode && nextEpisodeSlug) {
@@ -445,6 +472,31 @@ function VideoPlayerInner({
     }
   }, [playerMode, fallbackToEmbed]);
 
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!isDraggingProgress) {
+      setCurrentTime(video.currentTime);
+    }
+
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+      setDuration(video.duration);
+      if (video.buffered.length > 0) {
+        try {
+          const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+          setBufferedPercent(Math.min(100, (bufferedEnd / video.duration) * 100));
+        } catch {
+          setBufferedPercent(0);
+        }
+      }
+    }
+
+    if (capabilities.canReadCurrentTime) {
+      saveCurrentVideoProgress(false);
+    }
+  }, [isDraggingProgress, capabilities.canReadCurrentTime, saveCurrentVideoProgress]);
+
   // HLS and Plyr integration
   useHlsPlayer({
     useDirectStream,
@@ -463,14 +515,20 @@ function VideoPlayerInner({
     setPlayerMode,
     fallbackToEmbed,
     onLoadedMetadata: handleLoadedMetadata,
-    onCanPlay: () => setLoading(false),
-    onPlaying: () => setLoading(false),
-    onTimeUpdate: () => {
-      if (capabilities.canReadCurrentTime) {
-        saveCurrentVideoProgress(false);
+    onCanPlay: () => {
+      setLoading(false);
+      const video = videoRef.current;
+      if (video && Number.isFinite(video.duration) && video.duration > 0) {
+        setDuration(video.duration);
       }
     },
+    onPlaying: () => {
+      setLoading(false);
+      setIsPlaying(true);
+    },
+    onTimeUpdate: handleTimeUpdate,
     onPause: () => {
+      setIsPlaying(false);
       if (capabilities.canReadCurrentTime) {
         saveCurrentVideoProgress(true);
       }
@@ -566,6 +624,16 @@ function VideoPlayerInner({
 
     toast.info('Toàn màn hình chưa khả dụng trên trình duyệt này.');
   }, [useDirectStream]);
+
+  const togglePlayPause = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -704,8 +772,25 @@ function VideoPlayerInner({
   const handleSeek = (offsetSeconds: number) => {
     const v = videoRef.current;
     if (v && Number.isFinite(v.duration)) {
-      v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + offsetSeconds));
+      const targetTime = Math.max(0, Math.min(v.duration, v.currentTime + offsetSeconds));
+      v.currentTime = targetTime;
+      setCurrentTime(targetTime);
       triggerSeekFeedback(offsetSeconds > 0 ? 'forward' : 'backward');
+    }
+  };
+
+  const handleProgressBarChange = (value: number) => {
+    setDragTime(value);
+    setCurrentTime(value);
+  };
+
+  const handleProgressBarCommit = (value: number) => {
+    setIsDraggingProgress(false);
+    const video = videoRef.current;
+    if (video && Number.isFinite(video.duration)) {
+      const targetTime = Math.max(0, Math.min(video.duration, value));
+      video.currentTime = targetTime;
+      setCurrentTime(targetTime);
     }
   };
 
@@ -772,6 +857,9 @@ function VideoPlayerInner({
         return 'Đang tải';
     }
   };
+
+  const currentDisplayTime = isDraggingProgress ? dragTime : currentTime;
+  const progressPercent = duration > 0 ? Math.min(100, (currentDisplayTime / duration) * 100) : 0;
 
   return (
     <div
@@ -970,26 +1058,197 @@ function VideoPlayerInner({
             <p className="text-xs text-zinc-500 max-w-sm">Vui lòng thử đổi server hoặc chọn tập khác bên dưới.</p>
           </div>
         ) : null}
+
+        {useDirectStream && (
+          <div
+            className={`absolute bottom-0 left-0 right-0 z-30 pt-10 pb-2 px-2 sm:px-6 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex flex-col gap-1.5 pointer-events-auto transition-opacity duration-300 select-none ${
+              isOverlayVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="relative flex min-w-0 flex-1 items-center cursor-pointer py-1.5 group/bar">
+                <div className="relative w-full h-1.5 sm:h-2 bg-white/20 rounded-full overflow-hidden group-hover/bar:h-2 sm:group-hover/bar:h-2.5 transition-all">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-white/40 rounded-full transition-all duration-300"
+                    style={{ width: `${bufferedPercent}%` }}
+                  />
+                  <div
+                    className="absolute inset-y-0 left-0 bg-[#e50914] rounded-full"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration > 0 ? duration : 100}
+                  step="0.1"
+                  value={currentDisplayTime}
+                  onMouseDown={() => setIsDraggingProgress(true)}
+                  onTouchStart={() => setIsDraggingProgress(true)}
+                  onChange={(event) => handleProgressBarChange(Number(event.target.value))}
+                  onMouseUp={(event) => handleProgressBarCommit(Number(event.currentTarget.value))}
+                  onTouchEnd={(event) => handleProgressBarCommit(Number(event.currentTarget.value))}
+                  onKeyUp={(event) => {
+                    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                      handleProgressBarCommit(Number(event.currentTarget.value));
+                    }
+                  }}
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 focus-visible:opacity-100 focus-visible:accent-[#e50914]"
+                  aria-label="Thanh tua thời gian"
+                />
+                <div
+                  className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-white bg-[#e50914] shadow-lg transition-transform group-hover/bar:scale-125 sm:h-4 sm:w-4"
+                  style={{ left: `calc(${progressPercent}% - 7px)` }}
+                />
+              </div>
+              <span className="shrink-0 whitespace-nowrap text-[9px] font-mono text-zinc-300 sm:text-xs">
+                <span className="font-bold text-white">{formatTime(currentDisplayTime)}</span>
+                <span className="mx-0.5 text-zinc-500 sm:mx-1">/</span>
+                <span>{formatTime(duration)}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-0.5 text-white max-[360px]:gap-0 sm:gap-2">
+              <div className="flex min-w-0 items-center gap-0.5 max-[360px]:gap-0 sm:gap-1.5">
+                <button
+                  type="button"
+                  onClick={togglePlayPause}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/15 active:scale-95"
+                  title={isPlaying ? 'Tạm dừng (Space / K)' : 'Phát (Space / K)'}
+                  aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}
+                >
+                  {isPlaying ? <Pause className="h-5 w-5 fill-current sm:h-6 sm:w-6" /> : <Play className="h-5 w-5 fill-current sm:h-6 sm:w-6" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSeek(-10)}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-200 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
+                  title="Tua lùi 10 giây (Phím ←)"
+                  aria-label="Tua lùi 10 giây"
+                >
+                  <RotateCcw className="h-4 w-4 text-[#e50914] sm:h-5 sm:w-5" />
+                  <span className="hidden text-[11px] font-bold md:inline">-10s</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSeek(10)}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-200 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
+                  title="Tua tới 10 giây (Phím →)"
+                  aria-label="Tua tới 10 giây"
+                >
+                  <RotateCw className="h-4 w-4 text-[#e50914] sm:h-5 sm:w-5" />
+                  <span className="hidden text-[11px] font-bold md:inline">+10s</span>
+                </button>
+                <div className="flex min-h-11 min-w-11 items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={handleMuteToggle}
+                    className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-200 transition-colors hover:bg-white/15 hover:text-white"
+                    title={prefs.muted || prefs.volume === 0 ? 'Bật tiếng (M)' : 'Tắt tiếng (M)'}
+                    aria-label={prefs.muted || prefs.volume === 0 ? 'Bật tiếng' : 'Tắt tiếng'}
+                  >
+                    {prefs.muted || prefs.volume === 0 ? (
+                      <VolumeX className="h-4 w-4 text-[#e50914] sm:h-5 sm:w-5" />
+                    ) : prefs.volume < 0.5 ? (
+                      <Volume1 className="h-4 w-4 sm:h-5 sm:w-5" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={prefs.muted ? 0 : prefs.volume}
+                    onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                    className="hidden h-1.5 w-12 cursor-pointer rounded-full bg-white/20 accent-[#e50914] sm:block sm:w-16"
+                    aria-label="Thanh chỉnh âm lượng"
+                  />
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-0.5 max-[360px]:gap-0 sm:gap-1.5">
+                {nextEpisodeSlug && (
+                  <button
+                    type="button"
+                    onClick={triggerNextEpisodeNavigation}
+                    className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-[#e50914] text-white shadow-md transition-all hover:bg-[#f40612] active:scale-95"
+                    title={`Chuyển sang ${nextEpisodeLabel}`}
+                    aria-label={`Chuyển sang ${nextEpisodeLabel}`}
+                  >
+                    <SkipForward className="h-4 w-4 fill-current" />
+                    <span className="hidden text-[11px] font-bold lg:inline">{nextEpisodeLabel}</span>
+                  </button>
+                )}
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowSpeedMenu((visible) => !visible)}
+                    className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-white/20 bg-black/60 text-white transition-colors hover:bg-black/90"
+                    title="Tốc độ phát"
+                    aria-label="Tốc độ phát"
+                    aria-expanded={showSpeedMenu}
+                  >
+                    <Gauge className="h-3.5 w-3.5 text-[#e50914]" />
+                    <span className="text-[10px] font-bold sm:text-xs">{prefs.playbackRate}x</span>
+                  </button>
+                  {showSpeedMenu && (
+                    <div className="absolute bottom-full right-0 z-40 mb-2 min-w-[96px] rounded-xl border border-white/20 bg-[#181818] p-1 shadow-2xl backdrop-blur-md">
+                      <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">Tốc độ</div>
+                      {ALLOWED_PLAYBACK_RATES.map((rate) => (
+                        <button
+                          key={rate}
+                          type="button"
+                          onClick={() => handleSpeedSelect(rate)}
+                          className={`min-h-9 w-full rounded-lg px-2.5 text-left text-xs font-semibold transition-colors ${
+                            prefs.playbackRate === rate ? 'bg-[#e50914] font-bold text-white' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          {rate === 1 ? '1x (Chuẩn)' : `${rate}x`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {pipSupported && (
+                  <button
+                    type="button"
+                    onClick={handleTogglePiP}
+                    className={`hidden min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors md:flex ${
+                      isInPiP ? 'bg-[#e50914] font-bold text-white' : 'text-zinc-200 hover:bg-white/15 hover:text-white'
+                    }`}
+                    title={isInPiP ? 'Thoát cửa sổ nổi' : 'Cửa sổ nổi (PiP - Phím P)'}
+                    aria-label={isInPiP ? 'Thoát cửa sổ nổi' : 'Cửa sổ nổi'}
+                  >
+                    <PictureInPicture2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleFullscreenToggle}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-200 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
+                  title={isFullscreen ? 'Thoát toàn màn hình (F / Esc)' : 'Toàn màn hình (F)'}
+                  aria-label={isFullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
+                >
+                  {isFullscreen ? <Minimize2 className="h-4 w-4 sm:h-5 sm:w-5" /> : <Maximize2 className="h-4 w-4 sm:h-5 sm:w-5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ============================================================ */}
-      {/* 6. NETFLIX QUICK CONTROL BAR UNDER PLAYER                    */}
+      {/* 7. QUICK ACTION BAR UNDER PLAYER (External utilities)        */}
       {/* ============================================================ */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5 px-1 sm:px-2 text-xs text-zinc-400">
-        {/* Left: Server Pill & Quick Seek Buttons */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5 px-1 text-xs text-zinc-400 sm:px-2">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          {/* Server Badge */}
-          <span className="flex items-center gap-1.5 bg-[#181818] border border-white/10 text-white font-medium px-2.5 py-1.5 rounded-lg">
-            <Tv className="w-3.5 h-3.5 text-[#e50914]" />
+          <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#181818] px-2.5 py-1.5 font-medium text-white">
+            <Tv className="h-3.5 w-3.5 text-[#e50914]" />
             {serverName || 'Server Vietsub'}
           </span>
-
-          {/* Episode Badge */}
-          <span className="bg-[#e50914] text-white font-bold px-2.5 py-1.5 rounded-lg">
-            {displayEpisodeLabel}
-          </span>
-
-          {/* Stream Source Mode Switcher (Direct vs Embed) */}
+          <span className="rounded-lg bg-[#e50914] px-2.5 py-1.5 font-bold text-white">{displayEpisodeLabel}</span>
           {m3u8Url && embedUrl && (
             <button
               type="button"
@@ -1005,166 +1264,40 @@ function VideoPlayerInner({
                   toast.success('Đã chuyển sang luồng Dự phòng (Iframe)');
                 }
               }}
-              className="flex items-center gap-1.5 bg-[#181818] hover:bg-zinc-800 text-zinc-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-white/10 transition-colors cursor-pointer"
-              title={useDirectStream ? 'Đang dùng nguồn Direct. Bấm để chuyển sang nguồn Nhúng dự phòng nếu bị màn hình đen' : 'Đang dùng nguồn Dự phòng. Bấm để thử lại nguồn Direct'}
+              className="flex min-h-10 items-center gap-1.5 rounded-lg border border-white/10 bg-[#181818] px-2.5 py-1.5 text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+              title={useDirectStream ? 'Chuyển sang nguồn nhúng dự phòng' : 'Thử lại nguồn Direct'}
+              aria-label={useDirectStream ? 'Chuyển sang nguồn nhúng dự phòng' : 'Thử lại nguồn Direct'}
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
               <span className="text-[11px] font-semibold">{useDirectStream ? 'Nguồn: Direct' : 'Nguồn: Dự phòng'}</span>
             </button>
           )}
-
-          {/* Quick Seek -10s & +10s Buttons (Direct player only) */}
-          {useDirectStream && (
-            <div className="flex items-center gap-1 bg-[#181818] border border-white/10 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => handleSeek(-10)}
-                className="flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800 text-zinc-200 hover:text-white transition-colors cursor-pointer"
-                title="Tua lùi 10 giây (Phím ←)"
-                aria-label="Tua lùi 10 giây"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-[#e50914]" />
-                <span className="text-[11px] font-bold">-10s</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSeek(10)}
-                className="flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800 text-zinc-200 hover:text-white transition-colors cursor-pointer"
-                title="Tua nhanh 10 giây (Phím →)"
-                aria-label="Tua nhanh 10 giây"
-              >
-                <RotateCw className="w-3.5 h-3.5 text-[#e50914]" />
-                <span className="text-[11px] font-bold">+10s</span>
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Right: Next Episode, Speed, Volume, PiP, Theater */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Quick Next Episode Button (Available on all players if next episode exists) */}
-          {nextEpisodeSlug && (
-            <button
-              onClick={triggerNextEpisodeNavigation}
-              className="flex items-center gap-1.5 bg-[#e50914] hover:bg-[#f40612] text-white px-3 py-1.5 rounded-lg font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-              title={`Chuyển sang ${nextEpisodeLabel}`}
-            >
-              <SkipForward className="w-3.5 h-3.5 fill-current" />
-              <span>{nextEpisodeLabel}</span>
-            </button>
-          )}
-
-          {/* Speed Selector (0.75x, 1x, 1.25x, 1.5x) */}
-          {useDirectStream && (
-            <div className="relative">
-              <button
-                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                className="flex items-center gap-1 bg-[#181818] hover:bg-zinc-800 text-white px-2.5 py-1.5 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                title="Tốc độ phát"
-              >
-                <Gauge className="w-3.5 h-3.5 text-[#e50914]" />
-                <span className="font-bold text-xs">{prefs.playbackRate}x</span>
-              </button>
-
-              {showSpeedMenu && (
-                <div className="absolute right-0 bottom-full mb-2 bg-[#181818] border border-white/15 rounded-xl shadow-2xl p-1 z-40 min-w-[90px] backdrop-blur-md">
-                  <div className="text-[10px] font-bold text-zinc-400 px-2.5 py-1 uppercase tracking-wider">
-                    Tốc độ
-                  </div>
-                  {ALLOWED_PLAYBACK_RATES.map((rate) => (
-                    <button
-                      key={rate}
-                      onClick={() => handleSpeedSelect(rate)}
-                      className={`w-full text-left px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                        prefs.playbackRate === rate
-                          ? 'bg-[#e50914] text-white font-bold'
-                          : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
-                      }`}
-                    >
-                      {rate === 1 ? '1x (Chuẩn)' : `${rate}x`}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Volume Slider & Mute */}
-          {useDirectStream && (
-            <div className="hidden sm:flex items-center gap-1 bg-[#181818] border border-white/10 px-2.5 py-1.5 rounded-lg">
-              <button
-                onClick={handleMuteToggle}
-                className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                title={prefs.muted ? 'Bật tiếng' : 'Tắt tiếng'}
-              >
-                {prefs.muted || prefs.volume === 0 ? (
-                  <VolumeX className="w-3.5 h-3.5 text-[#e50914]" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5 text-white" />
-                )}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={prefs.muted ? 0 : prefs.volume}
-                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                className="w-14 h-1 accent-[#e50914] cursor-pointer"
-                aria-label="Điều chỉnh âm lượng"
-              />
-            </div>
-          )}
-
-          {/* PiP Button */}
-          {useDirectStream && pipSupported && (
-            <button
-              onClick={handleTogglePiP}
-              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-                isInPiP
-                  ? 'bg-[#e50914] border-[#e50914] text-white font-bold'
-                  : 'bg-[#181818] hover:bg-zinc-800 text-white border-white/10'
-              }`}
-              title={isInPiP ? 'Thoát cửa sổ nổi' : 'Xem cửa sổ nổi (PiP)'}
-            >
-              <PictureInPicture2 className={`w-3.5 h-3.5 ${isInPiP ? 'text-white' : 'text-[#e50914]'}`} />
-              <span className="hidden md:inline">{isInPiP ? 'Đang bật' : 'Cửa sổ nổi'}</span>
-            </button>
-          )}
-
-          {/* Reload Player */}
           <button
+            type="button"
             onClick={reloadPlayer}
-            className="flex items-center gap-1.5 bg-[#181818] hover:bg-zinc-800 text-white px-2.5 py-1.5 rounded-lg border border-white/10 transition-colors cursor-pointer"
+            className="flex min-h-10 items-center gap-1.5 rounded-lg border border-white/10 bg-[#181818] px-2.5 py-1.5 text-white transition-colors hover:bg-zinc-800"
             title="Tải lại trình phát nếu bị giật hoặc đứng hình"
             aria-label="Tải lại trình phát"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-[#e50914]" />
+            <RefreshCw className="h-3.5 w-3.5 text-[#e50914]" />
             <span className="hidden xs:inline">Tải lại</span>
           </button>
-
-          {/* Theater Mode Toggle */}
           <button
-            onClick={() => setIsTheaterMode(!isTheaterMode)}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+            type="button"
+            onClick={() => setIsTheaterMode((active) => !active)}
+            className={`hidden min-h-10 items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors sm:flex ${
               isTheaterMode
-                ? 'bg-[#e50914] border-[#e50914] text-white font-bold'
-                : 'bg-[#181818] hover:bg-zinc-800 text-white border-white/10'
+                ? 'border-[#e50914] bg-[#e50914] font-bold text-white'
+                : 'border-white/10 bg-[#181818] text-white hover:bg-zinc-800'
             }`}
             title={isTheaterMode ? 'Thoát chế độ rạp phim (Esc)' : 'Bật chế độ rạp phim mở rộng'}
+            aria-pressed={isTheaterMode}
           >
-            {isTheaterMode ? (
-              <>
-                <Minimize2 className="w-3.5 h-3.5 text-white" />
-                <span>Thu nhỏ</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="w-3.5 h-3.5 text-[#e50914]" />
-                <span>Rạp phim</span>
-              </>
-            )}
+            {isTheaterMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5 text-[#e50914]" />}
+            <span>Rạp phim</span>
           </button>
         </div>
       </div>
