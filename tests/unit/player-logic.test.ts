@@ -3,8 +3,11 @@ import {
   getPlayerSourceKey,
   isCurrentPlayerSourceGeneration,
   isEditableKeyboardTarget,
+  isNativeVideoFullscreen,
   isPlayerShortcutBlockedTarget,
+  selectFullscreenStrategy,
 } from '@/components/player/player-logic';
+import type { WebkitVideoElement } from '@/components/player/player-logic';
 import {
   createPlayerCleanup,
   getHlsRecoveryAction,
@@ -80,6 +83,40 @@ describe('player deterministic logic', () => {
     it('rejects stale source generations', () => {
       expect(isCurrentPlayerSourceGeneration(4, 4)).toBe(true);
       expect(isCurrentPlayerSourceGeneration(5, 4)).toBe(false);
+    });
+  });
+
+  describe('fullscreen capability selection', () => {
+    it('prefers native WebKit fullscreen for a direct video when available', () => {
+      const video = {
+        webkitSupportsFullscreen: true,
+        webkitEnterFullscreen: () => undefined,
+      } as unknown as WebkitVideoElement;
+
+      expect(selectFullscreenStrategy('direct', { requestFullscreen: async () => undefined }, video)).toBe(
+        'webkit-video'
+      );
+    });
+
+    it('uses standard container fullscreen for embed mode', () => {
+      const video = {
+        webkitSupportsFullscreen: true,
+        webkitEnterFullscreen: () => undefined,
+      } as unknown as WebkitVideoElement;
+
+      expect(selectFullscreenStrategy('embed', { requestFullscreen: async () => undefined }, video)).toBe(
+        'standard-container'
+      );
+    });
+
+    it('reports unsupported when neither fullscreen capability exists', () => {
+      expect(selectFullscreenStrategy('direct', {}, null)).toBe('unsupported');
+    });
+
+    it('detects active native WebKit video fullscreen without changing backend state', () => {
+      const video = { webkitDisplayingFullscreen: true } as unknown as WebkitVideoElement;
+      expect(isNativeVideoFullscreen(video)).toBe(true);
+      expect(isNativeVideoFullscreen(null)).toBe(false);
     });
   });
 

@@ -31,10 +31,15 @@ export function usePlyrPlayer({
     void import('plyr').then(({ default: PlyrClass }) => {
       if (cancelled || plyrRef.current || !videoRef.current) return;
 
-      const player = new PlyrClass(video, {
+      type PlyrRuntimeOptions = NonNullable<ConstructorParameters<typeof PlyrClass>[1]> & {
+        fullscreen: { enabled: boolean; fallback: boolean; iosNative: boolean };
+      };
+      const playerOptions: PlyrRuntimeOptions = {
         controls: [...PLYR_CONTROLS],
         captions: { active: false, update: false },
-      });
+        fullscreen: { enabled: true, fallback: true, iosNative: true },
+      };
+      const player = new PlyrClass(video, playerOptions);
 
       if (cancelled) {
         player.destroy();

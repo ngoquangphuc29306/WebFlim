@@ -49,6 +49,43 @@ export function isCurrentPlayerSourceGeneration(
   return currentGeneration === expectedGeneration;
 }
 
+export interface WebkitVideoElement extends HTMLVideoElement {
+  webkitSupportsFullscreen?: boolean;
+  webkitDisplayingFullscreen?: boolean;
+  webkitEnterFullscreen?: () => void;
+  webkitExitFullscreen?: () => void;
+}
+
+interface FullscreenContainerLike {
+  requestFullscreen?: (options?: FullscreenOptions) => Promise<void>;
+}
+
+export type FullscreenStrategy = 'standard-container' | 'webkit-video' | 'unsupported';
+
+export function selectFullscreenStrategy(
+  mode: 'direct' | 'embed',
+  container: FullscreenContainerLike | null,
+  video: WebkitVideoElement | null
+): FullscreenStrategy {
+  if (
+    mode === 'direct' &&
+    video?.webkitSupportsFullscreen === true &&
+    typeof video.webkitEnterFullscreen === 'function'
+  ) {
+    return 'webkit-video';
+  }
+
+  if (typeof container?.requestFullscreen === 'function') {
+    return 'standard-container';
+  }
+
+  return 'unsupported';
+}
+
+export function isNativeVideoFullscreen(video: WebkitVideoElement | null): boolean {
+  return video?.webkitDisplayingFullscreen === true;
+}
+
 interface PlayerSourceKeyInput {
   movieSlug: string;
   episodeSlug: string;

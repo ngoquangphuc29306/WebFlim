@@ -300,10 +300,15 @@ export function useHlsPlayer({
             !isCurrentPlayerSourceGeneration(sourceGenerationRef.current, currentGen) ||
             plyrRef.current
           ) return;
-          const player = new PlyrClass(video, {
+          type PlyrRuntimeOptions = NonNullable<ConstructorParameters<typeof PlyrClass>[1]> & {
+            fullscreen: { enabled: boolean; fallback: boolean; iosNative: boolean };
+          };
+          const playerOptions: PlyrRuntimeOptions = {
             controls: ['play-large', 'play', 'progress', 'current-time', 'fullscreen'],
             captions: { active: false, update: false },
-          });
+            fullscreen: { enabled: true, fallback: true, iosNative: true },
+          };
+          const player = new PlyrClass(video, playerOptions);
           if (isCancelled) {
             player.destroy();
             return;

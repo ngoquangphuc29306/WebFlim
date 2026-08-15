@@ -52,7 +52,10 @@ import {
   getPlayerSourceKey,
   isCurrentPlayerSourceGeneration,
   isPlayerShortcutBlockedTarget,
+  isNativeVideoFullscreen,
+  selectFullscreenStrategy,
 } from './player-logic';
+import type { WebkitVideoElement } from './player-logic';
 
 export type { PlayerMode } from './hooks/useHlsPlayer';
 
@@ -140,6 +143,7 @@ function VideoPlayerInner({
 
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [pipSupported, setPipSupported] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +191,27 @@ function VideoPlayerInner({
   const plyrRef = useRef<Plyr | null>(null);
   const directCleanupRef = useRef<(() => void) | null>(null);
   const sourceGenerationRef = useRef(0);
+
+  useEffect(() => {
+    const video = videoRef.current as WebkitVideoElement | null;
+    const syncFullscreenState = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement) || isNativeVideoFullscreen(video));
+    };
+
+    const handleWebkitBeginFullscreen = () => syncFullscreenState();
+    const handleWebkitEndFullscreen = () => syncFullscreenState();
+
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    video?.addEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+    video?.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+    syncFullscreenState();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      video?.removeEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+      video?.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+    };
+  }, [playerMode, useDirectStream]);
 
   // Active episode ref to prevent async timer race conditions
   const activeEpisodeRef = useRef({ movieSlug, episodeSlug });
@@ -491,6 +516,57 @@ function VideoPlayerInner({
     };
   }, [saveCurrentVideoProgress]);
 
+  const handleFullscreenToggle = useCallback(() => {
+    const video = videoRef.current as WebkitVideoElement | null;
+    const container = containerRef.current;
+
+    const reportFullscreenFailure = (error?: unknown) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Fullscreen request was rejected by the browser.', error);
+      }
+      toast.error('Trình duyệt không hỗ trợ toàn màn hình cho nguồn này.');
+    };
+
+    if (document.fullscreenElement) {
+      const exit = document.exitFullscreen?.();
+      if (exit) {
+        void exit.catch(reportFullscreenFailure);
+      }
+      return;
+    }
+
+    if (isNativeVideoFullscreen(video)) {
+      try {
+        video?.webkitExitFullscreen?.();
+      } catch (error) {
+        reportFullscreenFailure(error);
+      }
+      return;
+    }
+
+    const strategy = selectFullscreenStrategy(useDirectStream ? 'direct' : 'embed', container, video);
+
+    if (strategy === 'webkit-video') {
+      try {
+        video?.webkitEnterFullscreen?.();
+      } catch (error) {
+        reportFullscreenFailure(error);
+      }
+      return;
+    }
+
+    if (strategy === 'standard-container' && container?.requestFullscreen) {
+      try {
+        void container.requestFullscreen().catch(reportFullscreenFailure);
+      } catch (error) {
+        reportFullscreenFailure(error);
+      }
+      return;
+    }
+
+    toast.info('Toàn màn hình chưa khả dụng trên trình duyệt này.');
+  }, [useDirectStream]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -503,7 +579,6 @@ function VideoPlayerInner({
         return;
       }
 
-      const isFullscreen = Boolean(document.fullscreenElement);
       const isPlayerFocused =
         containerRef.current === document.activeElement ||
         (containerRef.current && containerRef.current.contains(document.activeElement)) ||
@@ -512,13 +587,7 @@ function VideoPlayerInner({
       if (e.key === 'f' || e.key === 'F') {
         if (useDirectStream || embedUrl) {
           e.preventDefault();
-          if (containerRef.current) {
-            if (document.fullscreenElement) {
-              document.exitFullscreen().catch(() => {});
-            } else {
-              containerRef.current.requestFullscreen().catch(() => {});
-            }
-          }
+          handleFullscreenToggle();
         }
         return;
       }
@@ -620,7 +689,16 @@ function VideoPlayerInner({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [useDirectStream, embedUrl, isTheaterMode, pipSupported, nextEpisodeSlug, triggerNextEpisodeNavigation]);
+  }, [
+    useDirectStream,
+    embedUrl,
+    isTheaterMode,
+    pipSupported,
+    nextEpisodeSlug,
+    triggerNextEpisodeNavigation,
+    handleFullscreenToggle,
+    isFullscreen,
+  ]);
 
   // Seeking handlers
   const handleSeek = (offsetSeconds: number) => {
