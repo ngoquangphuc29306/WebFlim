@@ -20,7 +20,7 @@ interface HeaderSearchProps {
 export default function HeaderSearch({ pathname }: HeaderSearchProps) {
   const router = useRouter();
 
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
@@ -28,16 +28,17 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
 
-  const searchRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef<number>(0);
 
-  // Reset focus/mobile search & cancel active requests on route change
+  // Reset focus, collapse search & cancel active requests on route change
   useEffect(() => {
     const reqRef = requestIdRef;
     const abortRef = abortControllerRef;
     const timer = setTimeout(() => {
-      setMobileSearchOpen(false);
+      setIsExpanded(false);
       setSearchFocused(false);
     }, 0);
     return () => {
@@ -49,6 +50,16 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
       }
     };
   }, [pathname]);
+
+  // Focus input when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded]);
 
   // Load recent searches when search input is focused
   useEffect(() => {
@@ -62,17 +73,20 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
     queueMicrotask(() => setHighlightedIndex(-1));
   }, [suggestions, searchQuery]);
 
-  // Outside click listener
+  // Outside click listener: collapse if empty
   useEffect(() => {
-    if (!searchFocused) return;
+    if (!isExpanded && !searchFocused) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setSearchFocused(false);
+        if (!searchQuery.trim()) {
+          setIsExpanded(false);
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [searchFocused]);
+  }, [isExpanded, searchFocused, searchQuery]);
 
   // Debounced live search with AbortController and Generation Guard
   useEffect(() => {
@@ -153,6 +167,28 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
     }
   };
 
+  const handleToggleExpand = () => {
+    if (!isExpanded) {
+      setIsExpanded(true);
+      setSearchFocused(true);
+    } else {
+      if (!searchQuery.trim()) {
+        setIsExpanded(false);
+        setSearchFocused(false);
+      } else {
+        inputRef.current?.focus();
+      }
+    }
+  };
+
+  const handleClearQuery = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSearchQuery('');
+    setSuggestions([]);
+    inputRef.current?.focus();
+  };
+
   const handleRemoveRecentSearch = (e: React.MouseEvent, item: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -197,61 +233,72 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
       }
     } else if (e.key === 'Escape') {
       setSearchFocused(false);
+      if (!searchQuery.trim()) {
+        setIsExpanded(false);
+      }
     }
   };
 
   return (
-    <div ref={searchRef} className="relative">
-      {/* Mobile Compact Search Trigger */}
-      {!mobileSearchOpen && (
-        <button
-          type="button"
-          onClick={() => {
-            setMobileSearchOpen(true);
-            setSearchFocused(true);
-          }}
-          className="sm:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#a3a3a3] hover:text-white rounded-full hover:bg-[#141414] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
-          aria-label="Mở tìm kiếm"
-          title="Tìm kiếm phim"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-      )}
-
-      {/* Form Input (Inline on desktop, overlay/expandable on mobile) */}
+    <div ref={searchContainerRef} className="relative flex items-center">
+      {/* Expanding Search Bar (Netflix Style) */}
       <form
         onSubmit={handleSearchSubmit}
-        className={`relative ${
-          mobileSearchOpen ? 'flex items-center gap-1.5 w-full' : 'hidden sm:block'
+        className={`flex items-center transition-all duration-300 ease-out ${
+          isExpanded
+            ? 'w-48 sm:w-64 md:w-72 lg:w-80 bg-black/90 border border-white/80 shadow-lg px-2.5 py-1 sm:py-1.5 rounded'
+            : 'w-9 h-9 sm:w-10 sm:h-10 bg-transparent border border-transparent'
         }`}
       >
+        {/* Search Icon / Trigger Button */}
+        <button
+          type="button"
+          onClick={handleToggleExpand}
+          className={`flex items-center justify-center shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded cursor-pointer ${
+            isExpanded
+              ? 'text-white/80 hover:text-white mr-2'
+              : 'w-full h-full text-[#e5e5e5] hover:text-white hover:bg-[#202020] rounded-full'
+          }`}
+          aria-label={isExpanded ? 'Tìm kiếm' : 'Mở thanh tìm kiếm'}
+          title="Tìm kiếm phim"
+        >
+          <Search className="w-4 h-4 xl:w-5 xl:h-5" />
+        </button>
+
+        {/* Expandable Text Input */}
         <input
+          ref={inputRef}
           type="text"
-          placeholder="Tìm tên phim..."
+          placeholder="Phim, diễn viên, thể loại..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          onFocus={() => setSearchFocused(true)}
+          onFocus={() => {
+            setIsExpanded(true);
+            setSearchFocused(true);
+          }}
           onKeyDown={handleKeyDownSearch}
           aria-label="Tìm kiếm phim"
-          className="w-full sm:w-56 md:w-64 bg-[#121212] text-white text-xs sm:text-sm pl-8 sm:pl-9 pr-8 sm:pr-3 py-1.5 sm:py-2 rounded-full border border-[#2a2a2a] focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-all placeholder:text-[#737373]"
+          className={`bg-transparent text-white text-xs sm:text-sm placeholder:text-[#808080] outline-none transition-all duration-300 min-w-0 ${
+            isExpanded ? 'w-full opacity-100' : 'w-0 opacity-0 pointer-events-none'
+          }`}
         />
-        <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#737373] absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
-        {mobileSearchOpen && (
+
+        {/* Clear Button (X) when query exists */}
+        {isExpanded && searchQuery && (
           <button
             type="button"
-            onClick={() => {
-              setMobileSearchOpen(false);
-              setSearchFocused(false);
-            }}
-            className="sm:hidden text-xs font-medium text-[#a3a3a3] hover:text-white px-2.5 py-1.5 min-h-[36px] flex items-center shrink-0 rounded-lg hover:bg-[#1a1a1a]"
+            onClick={handleClearQuery}
+            className="p-1 text-[#808080] hover:text-white transition-colors shrink-0 focus-visible:outline-none"
+            title="Xóa nội dung tìm kiếm"
+            aria-label="Xóa từ khóa"
           >
-            Hủy
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         )}
       </form>
 
       {/* Suggestions / Recent Searches Overlay */}
-      {searchFocused && (
+      {isExpanded && searchFocused && (
         <div className="fixed sm:absolute top-14 sm:top-full right-2 left-2 sm:left-auto sm:right-0 sm:w-96 bg-[#121212] border border-[#2a2a2a] rounded-xl mt-1.5 shadow-2xl overflow-hidden z-50 animate-in fade-in duration-150 max-h-[75vh] overflow-y-auto">
           {searchQuery.trim().length >= 2 ? (
             searching ? (
@@ -270,6 +317,7 @@ export default function HeaderSearch({ pathname }: HeaderSearchProps) {
                       onClick={() => {
                         addRecentSearch(item.title);
                         setSearchFocused(false);
+                        setIsExpanded(false);
                       }}
                       className={`flex items-center gap-3 p-2.5 transition-colors group focus-visible:outline-none focus-visible:bg-[#202020] ${
                         isHighlighted ? 'bg-[#202020] text-white' : 'hover:bg-[#181818]'

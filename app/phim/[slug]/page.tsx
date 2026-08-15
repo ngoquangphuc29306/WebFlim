@@ -4,7 +4,6 @@ import { Metadata } from 'next';
 import { getEnrichedMovieDetail, toMovieDetailModel } from '@/lib/tmdb/enrichment';
 import { getRelatedMovies } from '@/lib/tmdb/related';
 import MovieDetails from '@/components/movie/MovieDetails';
-import MovieRow from '@/components/movie/MovieRow';
 
 export const revalidate = 60;
 
@@ -42,19 +41,14 @@ export default async function MovieDetailPage({ params }: PageProps) {
   }
 
   const movie = enriched.provider;
-
   const relatedMovies = await getRelatedMovies(movie);
 
   return (
-    <div className="space-y-12">
-      <MovieDetails movie={toMovieDetailModel(enriched)} />
-
-      {relatedMovies.length > 0 && (
-        <MovieRow
-          title="Phim Cùng Thể Loại & Đề Xuất"
-          movies={relatedMovies}
-        />
-      )}
+    <div className="min-h-screen">
+      <MovieDetails
+        movie={toMovieDetailModel(enriched)}
+        relatedMovies={relatedMovies}
+      />
     </div>
   );
 }

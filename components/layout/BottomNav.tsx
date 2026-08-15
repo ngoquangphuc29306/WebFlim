@@ -24,7 +24,7 @@ export default function BottomNav() {
     <nav
       aria-label="Điều hướng di động"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      className="fixed bottom-0 left-0 right-0 z-45 bg-[#080808]/95 backdrop-blur-md border-t border-[#1f1f1f] md:hidden shadow-2xl"
+      className="fixed bottom-0 left-0 right-0 z-45 bg-[#121212]/95 backdrop-blur-md border-t border-[#262626] md:hidden shadow-2xl"
     >
       <div className="grid grid-cols-4 h-14 max-w-md mx-auto">
         {items.map((item) => {
@@ -40,10 +40,10 @@ export default function BottomNav() {
               href={item.href}
               aria-current={isActive ? 'page' : undefined}
               className={`flex flex-col items-center justify-center gap-1 transition-colors min-h-[48px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded-lg ${
-                isActive ? 'text-[#e50914] font-semibold' : 'text-[#a3a3a3] hover:text-[#f5f5f5] font-medium'
+                isActive ? 'text-[#e50914] font-bold' : 'text-[#a3a3a3] hover:text-white font-medium'
               }`}
             >
-              <IconComponent className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+              <IconComponent className={`w-5 h-5 ${isActive ? 'stroke-[2.5px] fill-current/10' : 'stroke-[1.75px]'}`} />
               <span className="text-[10px] leading-none tracking-tight">{item.label}</span>
             </Link>
           );
