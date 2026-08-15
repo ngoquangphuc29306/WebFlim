@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Bookmark, History, Compass } from 'lucide-react';
+import { Bookmark, History, Compass } from 'lucide-react';
 import { CategoryModel, CountryModel, YearOptionModel } from '@/types/movie';
 import TaxonomyDropdowns from '@/components/layout/TaxonomyDropdowns';
 import HeaderSearch from '@/components/layout/HeaderSearch';
 import UserAccountMenu from '@/components/layout/UserAccountMenu';
-import MobileNav from '@/components/layout/MobileNav';
+import MobileSubHeaderPills from '@/components/layout/MobileSubHeaderPills';
 
 interface HeaderProps {
   genres?: CategoryModel[];
@@ -30,7 +30,6 @@ const navLinks = [
 export default function Header({ genres = [], countries = [], years = [] }: HeaderProps) {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Header scroll state listener
   useEffect(() => {
@@ -41,58 +40,39 @@ export default function Header({ genres = [], countries = [], years = [] }: Head
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMobileMenuOpen(false);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [pathname]);
-
-  // Escape key listener for mobile drawer
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
         isScrolled
-          ? 'bg-[#080808]/95 backdrop-blur-md border-b border-[#1f1f1f] py-2.5 sm:py-3 shadow-xl'
-          : 'bg-header-gradient py-3.5 sm:py-4'
+          ? 'bg-[#141414]/95 backdrop-blur-md border-b border-[#262626] py-2 sm:py-2.5 shadow-2xl'
+          : 'bg-gradient-to-b from-[#141414]/95 via-[#141414]/60 to-transparent py-2.5 sm:py-3.5'
       }`}
     >
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* Logo */}
+          {/* Logo (Netflix-inspired Red Mark / Wordmark) */}
           <Link
             href="/"
             aria-label="Trang chủ PHEVO"
             className="flex items-center gap-2 text-xl font-bold tracking-tight text-white group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] rounded-lg shrink-0"
           >
-            <div className="relative h-8 sm:h-9 w-auto min-w-[32px] sm:min-w-[36px] flex items-center justify-center">
+            <div className="relative h-7 sm:h-9 w-auto min-w-[28px] sm:min-w-[36px] flex items-center justify-center">
               <Image
                 src="/logo.png"
                 alt="PHEVO Logo"
                 width={140}
                 height={36}
-                className="h-8 sm:h-9 w-auto max-w-[48px] sm:max-w-none object-contain group-hover:scale-105 transition-transform duration-200"
+                className="h-7 sm:h-9 w-auto max-w-[40px] sm:max-w-none object-contain group-hover:scale-105 transition-transform duration-200"
                 priority
                 unoptimized
               />
             </div>
-            <span className="font-extrabold tracking-wider text-xl sm:text-2xl">
+            <span className="font-black tracking-wider text-xl sm:text-2xl drop-shadow-md">
               PHE<span className="text-[#e50914]">VO</span>
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation (>= lg) */}
           <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5" aria-label="Điều hướng chính">
             {navLinks.map((link) => {
               const active = pathname === link.href;
@@ -102,10 +82,10 @@ export default function Header({ genres = [], countries = [], years = [] }: Head
                   key={link.href}
                   href={link.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg text-xs xl:text-sm font-medium transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
+                  className={`px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg text-xs xl:text-sm transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
                     active
-                      ? 'text-[#f5f5f5] bg-[#181818] font-semibold border border-[#2a2a2a] shadow-xs'
-                      : 'text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#141414]'
+                      ? 'text-white bg-[#262626] font-bold border border-[#383838] shadow-sm'
+                      : 'text-[#e5e5e5] font-medium hover:text-white hover:bg-[#202020]'
                   }`}
                 >
                   {Icon && <Icon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-[#e50914]" />}
@@ -124,66 +104,47 @@ export default function Header({ genres = [], countries = [], years = [] }: Head
             />
           </nav>
 
-          {/* Right Section: Search, Shortcuts & Account */}
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
+          {/* Right Section: Search & Account (On mobile: Exactly Search + Avatar) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
             {/* Live Search */}
             <HeaderSearch pathname={pathname} />
 
-            {/* Watchlist Shortcut */}
+            {/* Watchlist Shortcut (Desktop only) */}
             <Link
               href="/yeu-thich"
               title="Danh sách yêu thích"
               aria-label="Danh sách yêu thích"
               className={`hidden sm:flex p-2 rounded-full transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
                 pathname === '/yeu-thich'
-                  ? 'text-[#f5f5f5] bg-[#1f1f1f] border border-[#2a2a2a]'
-                  : 'text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#141414]'
+                  ? 'text-white bg-[#262626] border border-[#383838]'
+                  : 'text-[#e5e5e5] hover:text-white hover:bg-[#202020]'
               }`}
             >
               <Bookmark className="w-4 h-4 xl:w-5 xl:h-5" />
             </Link>
 
-            {/* Watch History Shortcut */}
+            {/* Watch History Shortcut (Desktop only) */}
             <Link
               href="/lich-su"
               title="Lịch sử xem phim"
               aria-label="Lịch sử xem phim"
               className={`hidden sm:flex p-2 rounded-full transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] ${
                 pathname === '/lich-su'
-                  ? 'text-[#f5f5f5] bg-[#1f1f1f] border border-[#2a2a2a]'
-                  : 'text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#141414]'
+                  ? 'text-white bg-[#262626] border border-[#383838]'
+                  : 'text-[#e5e5e5] hover:text-white hover:bg-[#202020]'
               }`}
             >
               <History className="w-4 h-4 xl:w-5 xl:h-5" />
             </Link>
 
-            {/* User Account Menu */}
+            {/* User Account Avatar Menu */}
             <UserAccountMenu />
-
-            {/* Mobile Menu Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-expanded={mobileMenuOpen}
-              aria-label={mobileMenuOpen ? 'Đóng menu điều hướng' : 'Mở menu điều hướng'}
-              className="lg:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#a3a3a3] hover:text-white rounded-lg hover:bg-[#141414] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <MobileNav
-          navLinks={navLinks}
-          genres={genres}
-          countries={countries}
-          years={years}
-          onClose={() => setMobileMenuOpen(false)}
-        />
-      )}
+      {/* Netflix Mobile Quick Filter Pills ([Phim T.hình] [Phim lẻ] [Thể loại ▾]) */}
+      <MobileSubHeaderPills genres={genres} />
     </header>
   );
 }

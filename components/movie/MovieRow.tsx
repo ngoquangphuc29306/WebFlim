@@ -28,7 +28,7 @@ export default function MovieRow({
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
       const { scrollLeft, clientWidth } = rowRef.current;
-      const scrollAmount = clientWidth * 0.75;
+      const scrollAmount = clientWidth;
       rowRef.current.scrollTo({
         left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
         behavior: 'smooth',
@@ -70,7 +70,7 @@ export default function MovieRow({
         <button
           onClick={() => scroll('left')}
           type="button"
-          className="hidden sm:flex absolute -left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-[#101010]/95 border border-[#2a2a2a] text-[#f5f5f5] items-center justify-center opacity-0 group-hover/row:opacity-100 hover:scale-105 hover:border-[#e50914] hover:bg-[#181818] active:scale-95 transition-all shadow-2xl focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+          className="hidden sm:flex absolute -left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-[#141414]/90 backdrop-blur-md border border-white/15 text-white items-center justify-center opacity-0 group-hover/row:opacity-100 hover:scale-110 hover:bg-white hover:text-black active:scale-95 transition-all shadow-2xl focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] cursor-pointer"
           aria-label={`Cuộn sang trái phần ${title}`}
         >
           <ChevronLeft className="w-6 h-6" />
@@ -79,12 +79,12 @@ export default function MovieRow({
         {/* Scrollable Track */}
         <div
           ref={rowRef}
-          className="flex items-stretch gap-3 sm:gap-4 lg:gap-5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-2 px-0.5"
+          className="flex items-stretch gap-2.5 sm:gap-4 lg:gap-5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-2 sm:py-3 px-1"
         >
           {movies.map((movie) => (
             <div
               key={movie.slug}
-              className="w-[135px] sm:w-[165px] md:w-[185px] lg:w-[205px] xl:w-[220px] shrink-0 snap-start"
+              className="w-[115px] xs:w-[130px] sm:w-[155px] md:w-[180px] lg:w-[calc((100%-80px)/5)] shrink-0 snap-start"
             >
               <MovieCard
                 movie={movie}
@@ -99,7 +99,7 @@ export default function MovieRow({
         <button
           onClick={() => scroll('right')}
           type="button"
-          className="hidden sm:flex absolute -right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-[#101010]/95 border border-[#2a2a2a] text-[#f5f5f5] items-center justify-center opacity-0 group-hover/row:opacity-100 hover:scale-105 hover:border-[#e50914] hover:bg-[#181818] active:scale-95 transition-all shadow-2xl focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+          className="hidden sm:flex absolute -right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-[#141414]/90 backdrop-blur-md border border-white/15 text-white items-center justify-center opacity-0 group-hover/row:opacity-100 hover:scale-110 hover:bg-white hover:text-black active:scale-95 transition-all shadow-2xl focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] cursor-pointer"
           aria-label={`Cuộn sang phải phần ${title}`}
         >
           <ChevronRight className="w-6 h-6" />

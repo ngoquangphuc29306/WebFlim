@@ -21,11 +21,11 @@ export default function RecentHistoryRow() {
   const titleText = hasRealProgress ? 'Tiếp Tục Xem' : 'Đã Xem Gần Đây';
 
   return (
-    <section className="my-7 sm:my-9 lg:my-10 px-4 sm:px-6 lg:px-8 xl:px-12 max-w-[1920px] mx-auto">
-      <div className="flex items-center justify-between mb-3.5 sm:mb-4">
-        <div className="flex items-center gap-2.5">
+    <section className="my-6 sm:my-8 lg:my-10 px-4 sm:px-6 lg:px-8 xl:px-12 max-w-[1920px] mx-auto">
+      <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
+        <div className="flex items-center gap-2">
           <History className="w-5 h-5 text-[#e50914]" />
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#f5f5f5] tracking-tight">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-black text-white tracking-tight">
             {titleText}
           </h2>
         </div>
@@ -43,10 +43,10 @@ export default function RecentHistoryRow() {
 
             <Link
               href="/lich-su"
-              className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#a3a3a3] hover:text-[#e50914] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1.5 py-0.5 group/link"
+              className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#a3a3a3] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1.5 py-0.5 group/link"
             >
               <span>Tất cả</span>
-              <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+              <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform text-[#e50914]" />
             </Link>
           </div>
         )}
@@ -66,7 +66,7 @@ export default function RecentHistoryRow() {
               return (
                 <div
                   key={`${item.movieSlug}-${item.episodeSlug}`}
-                  className="relative w-52 sm:w-64 shrink-0 snap-start bg-[#101010] border border-[#202020] hover:border-[#e50914] rounded-xl overflow-hidden p-2.5 flex flex-col justify-between group transition-all"
+                  className="relative w-52 sm:w-64 shrink-0 snap-start bg-[#181818] border border-[#262626] hover:border-[#e50914] rounded-xl overflow-hidden p-2.5 flex flex-col justify-between group transition-all shadow-lg"
                 >
                   <button
                     onClick={(e) => {
@@ -74,7 +74,7 @@ export default function RecentHistoryRow() {
                       e.stopPropagation();
                       removeProgress(item.movieSlug, item.episodeSlug);
                     }}
-                    className="absolute top-1.5 right-1.5 z-10 min-w-[36px] min-h-[36px] p-1.5 rounded-full bg-black/80 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+                    className="absolute top-1.5 right-1.5 z-10 min-w-[32px] min-h-[32px] p-1.5 rounded-full bg-black/80 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
                     title="Xóa khỏi Tiếp tục xem"
                     aria-label={`Xóa ${item.movieTitle} tập ${item.episodeName || ''} khỏi Tiếp tục xem`}
                   >
@@ -82,7 +82,7 @@ export default function RecentHistoryRow() {
                   </button>
 
                   <Link href={watchUrl} className="flex gap-3 min-w-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded-lg">
-                    <div className="relative w-14 aspect-[2/3] rounded-md overflow-hidden bg-[#181818] shrink-0">
+                    <div className="relative w-14 aspect-[2/3] rounded-md overflow-hidden bg-[#202020] shrink-0 border border-[#333]">
                       {item.posterUrl && (
                         <Image
                           src={item.posterUrl}
@@ -98,13 +98,13 @@ export default function RecentHistoryRow() {
                     </div>
 
                     <div className="flex flex-col justify-center min-w-0 flex-1 pr-5">
-                      <h4 className="text-xs font-bold text-[#f5f5f5] truncate group-hover:text-[#e50914] transition-colors">
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-[#e50914] transition-colors">
                         {item.movieTitle}
                       </h4>
-                      <span className="text-[11px] text-[#e50914] font-medium mt-1 truncate">
+                      <span className="text-[11px] text-[#e50914] font-semibold mt-1 truncate">
                         Tập {item.episodeName || '1'} ({progressPct}%)
                       </span>
-                      <span className="text-[10px] text-[#737373] mt-0.5 truncate">
+                      <span className="text-[10px] text-[#8c8c8c] mt-0.5 truncate">
                         {item.serverName || 'Vietsub'}
                       </span>
                     </div>
@@ -117,7 +117,7 @@ export default function RecentHistoryRow() {
                     aria-valuemax={100}
                     aria-valuenow={progressPct}
                     aria-label={`Đã xem ${progressPct}%`}
-                    className="mt-2.5 w-full bg-[#202020] h-1 rounded-full overflow-hidden"
+                    className="mt-2.5 w-full bg-[#2a2a2a] h-1.5 rounded-full overflow-hidden"
                   >
                     <div
                       className="bg-[#e50914] h-full rounded-full transition-all"
@@ -135,7 +135,7 @@ export default function RecentHistoryRow() {
               return (
                 <div
                   key={item.slug}
-                  className="relative w-48 sm:w-60 shrink-0 snap-start bg-[#101010] border border-[#202020] hover:border-[#e50914] rounded-xl overflow-hidden p-2.5 flex gap-3 group transition-all"
+                  className="relative w-48 sm:w-60 shrink-0 snap-start bg-[#181818] border border-[#262626] hover:border-[#e50914] rounded-xl overflow-hidden p-2.5 flex gap-3 group transition-all shadow-lg"
                 >
                   <button
                     onClick={(e) => {
@@ -143,7 +143,7 @@ export default function RecentHistoryRow() {
                       e.stopPropagation();
                       removeHistoryItem(item.slug);
                     }}
-                    className="absolute top-1.5 right-1.5 z-10 min-w-[36px] min-h-[36px] p-1.5 rounded-full bg-black/80 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
+                    className="absolute top-1.5 right-1.5 z-10 min-w-[32px] min-h-[32px] p-1.5 rounded-full bg-black/80 text-[#a3a3a3] hover:text-white flex items-center justify-center transition-colors active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
                     title="Xóa khỏi lịch sử xem"
                     aria-label={`Xóa ${item.title} khỏi lịch sử xem`}
                   >
@@ -151,7 +151,7 @@ export default function RecentHistoryRow() {
                   </button>
 
                   <Link href={watchUrl} className="flex gap-3 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded-lg">
-                    <div className="relative w-14 aspect-[2/3] rounded-md overflow-hidden bg-[#181818] shrink-0">
+                    <div className="relative w-14 aspect-[2/3] rounded-md overflow-hidden bg-[#202020] shrink-0 border border-[#333]">
                       {item.posterUrl && (
                         <Image
                           src={item.posterUrl}
@@ -167,13 +167,13 @@ export default function RecentHistoryRow() {
                     </div>
 
                     <div className="flex flex-col justify-center min-w-0 flex-1 pr-5">
-                      <h4 className="text-xs font-bold text-[#f5f5f5] truncate group-hover:text-[#e50914] transition-colors">
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-[#e50914] transition-colors">
                         {item.title}
                       </h4>
-                      <span className="text-[11px] text-[#e50914] font-medium mt-1 truncate">
+                      <span className="text-[11px] text-[#e50914] font-semibold mt-1 truncate">
                         Đã xem: Tập {item.episodeName}
                       </span>
-                      <span className="text-[10px] text-[#737373] mt-0.5 truncate">
+                      <span className="text-[10px] text-[#8c8c8c] mt-0.5 truncate">
                         {item.serverName || 'Vietsub'}
                       </span>
                     </div>

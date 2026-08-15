@@ -20,9 +20,9 @@ const TOP_GENRES = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[#080808] border-t border-[#1f1f1f] text-[#737373] text-sm pt-12 pb-8 mt-20">
+    <footer className="bg-[#101010] border-t border-[#262626] text-[#8c8c8c] text-sm pt-12 pb-8 mt-20">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#181818]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#202020]">
           
           {/* Brand Info */}
           <div className="space-y-4 sm:col-span-2 md:col-span-1">
@@ -38,24 +38,24 @@ export default function Footer() {
                 className="h-8 w-auto object-contain"
                 unoptimized
               />
-              <span className="font-extrabold tracking-wider text-xl">
+              <span className="font-black tracking-wider text-xl">
                 PHE<span className="text-[#e50914]">VO</span>
               </span>
             </Link>
-            <p className="text-xs leading-relaxed text-[#8c8c8c]">
+            <p className="text-xs leading-relaxed text-[#a3a3a3]">
               Trải nghiệm xem phim trực tuyến với giao diện hiện đại và nội dung được cập nhật thường xuyên. Dữ liệu phim được lấy từ các nguồn API bên thứ ba.
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-[#f5f5f5] uppercase tracking-wider">Khám Phá</h3>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Khám Phá</h3>
             <ul className="space-y-2 text-xs">
               {QUICK_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="hover:text-[#f5f5f5] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1 py-0.5 -mx-1"
+                    className="hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1 py-0.5 -mx-1"
                   >
                     {link.label}
                   </Link>
@@ -66,13 +66,13 @@ export default function Footer() {
 
           {/* Top Genres */}
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-[#f5f5f5] uppercase tracking-wider">Thể Loại Nổi Bật</h3>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Thể Loại Nổi Bật</h3>
             <ul className="space-y-2 text-xs">
               {TOP_GENRES.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="hover:text-[#f5f5f5] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1 py-0.5 -mx-1"
+                    className="hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914] rounded px-1 py-0.5 -mx-1"
                   >
                     {link.label}
                   </Link>
@@ -83,14 +83,14 @@ export default function Footer() {
 
           {/* Features & Disclaimer */}
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-[#f5f5f5] uppercase tracking-wider">Bản Quyền & Thông Tin</h3>
-            <p className="text-xs text-[#8c8c8c] leading-relaxed">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Bản Quyền & Thông Tin</h3>
+            <p className="text-xs text-[#a3a3a3] leading-relaxed">
               Tất cả nội dung được tổng hợp tự động từ các dịch vụ phát trực tuyến công cộng. Chúng tôi không lưu trữ bất kỳ file phim nào trên máy chủ.
             </p>
-            <p className="text-xs text-[#8c8c8c] leading-relaxed">
-              This product uses the <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer noopener" className="text-[#d4d4d4] hover:text-white underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914]">TMDB API</a> but is not endorsed or certified by TMDB.
+            <p className="text-xs text-[#a3a3a3] leading-relaxed">
+              This product uses the <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer noopener" className="text-[#e5e5e5] hover:text-white underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#e50914]">TMDB API</a> but is not endorsed or certified by TMDB.
             </p>
-            <div className="flex items-center gap-2 pt-2 text-xs text-[#a3a3a3]">
+            <div className="flex items-center gap-2 pt-2 text-xs text-[#d4d4d4]">
               <Shield className="w-4 h-4 text-[#e50914]" />
               <span>Dữ liệu chính xác & an toàn</span>
             </div>
