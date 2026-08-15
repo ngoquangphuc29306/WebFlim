@@ -22,8 +22,12 @@ test('home navigation reaches discovery', async ({ page }) => {
 
 test('search entry point can navigate to the search route', async ({ page }) => {
   await page.goto('/');
+  const searchToggle = page.getByRole('button', { name: 'Mở thanh tìm kiếm' });
   const searchInput = page.locator('input[aria-label="Tìm kiếm phim"]').first();
 
+  await expect(searchToggle).toBeVisible();
+  await expect(searchToggle).toBeEnabled();
+  await searchToggle.click();
   await expect(searchInput).toBeVisible();
   await expect(searchInput).toBeEnabled();
   await searchInput.fill('qa-smoke');
