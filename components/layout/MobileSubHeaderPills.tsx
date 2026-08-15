@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, X, Check } from 'lucide-react';
@@ -21,9 +22,89 @@ const filterItems = [
 export default function MobileSubHeaderPills({ genres }: MobileSubHeaderPillsProps) {
   const pathname = usePathname();
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   // Determine current active genre if on a genre page
   const activeGenre = genres.find((g) => pathname === `/the-loai/${g.slug}`);
+
+  useEffect(() => {
+    if (!isCategoryModalOpen) return;
+
+    previouslyFocusedRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const scrollY = window.scrollY;
+    const previousBodyStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+      overscrollBehavior: document.body.style.overscrollBehavior,
+    };
+
+    // Lock the document itself so touch scrolling cannot leak through the modal on iOS.
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overscrollBehavior = 'none';
+
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousBodyStyles.overflow;
+      document.body.style.position = previousBodyStyles.position;
+      document.body.style.top = previousBodyStyles.top;
+      document.body.style.width = previousBodyStyles.width;
+      document.body.style.overscrollBehavior = previousBodyStyles.overscrollBehavior;
+      window.scrollTo(0, scrollY);
+
+      const previouslyFocused = previouslyFocusedRef.current;
+      if (previouslyFocused && document.contains(previouslyFocused)) {
+        previouslyFocused.focus();
+      }
+      previouslyFocusedRef.current = null;
+    };
+  }, [isCategoryModalOpen]);
+
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setIsCategoryModalOpen(false);
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    );
+
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <>
@@ -64,22 +145,28 @@ export default function MobileSubHeaderPills({ genres }: MobileSubHeaderPillsPro
       </div>
 
       {/* Fullscreen Netflix Category Sheet / Modal */}
-      {isCategoryModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Danh mục thể loại phim"
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200"
-        >
+      {isCategoryModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-category-dialog-title"
+            tabIndex={-1}
+            onKeyDown={handleDialogKeyDown}
+            className="fixed inset-0 z-[100] flex flex-col justify-between overflow-hidden overscroll-contain bg-[#080808] text-white animate-in fade-in zoom-in-95 duration-200"
+          >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-12 pb-4 border-b border-white/10">
-            <span className="text-base font-bold text-white tracking-wide">
+          <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 [padding-top:max(3rem,env(safe-area-inset-top))] pb-4">
+            <span id="mobile-category-dialog-title" className="text-base font-bold text-white tracking-wide">
               Chọn Thể Loại
             </span>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={() => setIsCategoryModalOpen(false)}
-              className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all focus-visible:outline-none"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
               aria-label="Đóng bảng thể loại"
             >
               <X className="w-5 h-5" />
@@ -87,7 +174,7 @@ export default function MobileSubHeaderPills({ genres }: MobileSubHeaderPillsPro
           </div>
 
           {/* Categories List (Netflix Centered Scrollable List) */}
-          <div className="flex-1 overflow-y-auto py-8 px-6 text-center space-y-5 custom-scrollbar">
+          <div className="min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto px-6 py-8 text-center space-y-5 custom-scrollbar">
             <Link
               href="/"
               onClick={() => setIsCategoryModalOpen(false)}
@@ -119,18 +206,19 @@ export default function MobileSubHeaderPills({ genres }: MobileSubHeaderPillsPro
           </div>
 
           {/* Bottom Close Button */}
-          <div className="p-6 pb-10 flex justify-center border-t border-white/10">
+          <div className="flex shrink-0 justify-center border-t border-white/10 px-6 pt-6 [padding-bottom:calc(2.5rem+env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => setIsCategoryModalOpen(false)}
-              className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-transform"
+              className="min-h-[48px] min-w-[48px] rounded-full bg-white text-black flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]"
               aria-label="Đóng"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
