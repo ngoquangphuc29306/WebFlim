@@ -138,6 +138,8 @@ export default async function WatchMoviePage({ params, searchParams }: PageProps
         m3u8Url={activeEpisode?.m3u8Url}
         movieSlug={movie.slug}
         movieTitle={movie.title}
+        movieOriginalTitle={movie.originalTitle}
+        quality={movie.quality}
         posterUrl={movie.posterUrl}
         episodeName={activeEpisode?.name || 'Full'}
         episodeSlug={activeEpisode?.slug || 'tap-full'}

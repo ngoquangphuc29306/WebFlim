@@ -11,23 +11,25 @@ export const PLYR_CONTROLS = [
 
 export interface UsePlyrPlayerOptions {
   enabled: boolean;
-  getVideoElement: () => HTMLVideoElement | null;
+  videoRef: MutableRefObject<HTMLVideoElement | null>;
+  videoMountKey?: number;
   plyrRef: MutableRefObject<Plyr | null>;
 }
 
 /** Creates one Plyr instance for the existing HLS/native video element. */
 export function usePlyrPlayer({
   enabled,
-  getVideoElement,
+  videoRef,
+  videoMountKey,
   plyrRef,
 }: UsePlyrPlayerOptions): void {
   useEffect(() => {
     let cancelled = false;
-    const video = getVideoElement();
+    const video = videoRef.current;
     if (!enabled || !video) return;
 
     void import('plyr').then(({ default: PlyrClass }) => {
-      if (cancelled || plyrRef.current || !getVideoElement()) return;
+      if (cancelled || plyrRef.current || !videoRef.current) return;
 
       const player = new PlyrClass(video, {
         controls: [...PLYR_CONTROLS],
@@ -50,5 +52,5 @@ export function usePlyrPlayer({
         plyrRef.current = null;
       }
     };
-  }, [enabled, getVideoElement, plyrRef]);
+  }, [enabled, videoRef, videoMountKey, plyrRef]);
 }

@@ -10,6 +10,45 @@ export function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
+export function isPlayerShortcutBlockedTarget(target: EventTarget | null): boolean {
+  if (!target || typeof target !== 'object') return false;
+
+  const element = target as {
+    tagName?: string;
+    role?: string | null;
+    isContentEditable?: boolean;
+    classList?: { contains: (className: string) => boolean };
+    closest?: (selector: string) => Element | null;
+  };
+
+  if (
+    isEditableKeyboardTarget(target) ||
+    ['BUTTON', 'MENU', 'MENUITEM'].includes(element.tagName ?? '') ||
+    ['button', 'menu', 'menuitem'].includes(element.role ?? '') ||
+    element.classList?.contains('plyr__controls') ||
+    element.classList?.contains('plyr__menu')
+  ) {
+    return true;
+  }
+
+  if (typeof element.closest === 'function') {
+    return Boolean(
+      element.closest(
+        'button, [role="button"], [role="menu"], [role="menuitem"], input, textarea, select, [contenteditable="true"], .plyr__controls, .plyr__menu'
+      )
+    );
+  }
+
+  return false;
+}
+
+export function isCurrentPlayerSourceGeneration(
+  currentGeneration: number,
+  expectedGeneration: number
+): boolean {
+  return currentGeneration === expectedGeneration;
+}
+
 interface PlayerSourceKeyInput {
   movieSlug: string;
   episodeSlug: string;
