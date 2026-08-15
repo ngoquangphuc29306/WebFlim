@@ -1,11 +1,12 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getMovieDetail, getMoviesByGenre, getLatestMovies } from '@/lib/api/movies';
 import { MovieCardModel } from '@/types/movie';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import EpisodeSelector from '@/components/movie/EpisodeSelector';
+import { normalizeServerIndex, resolveEpisodeForServer } from '@/components/movie/episode-selection';
 import MovieRow from '@/components/movie/MovieRow';
 import { Info, Calendar, Star, Users, ChevronLeft, Film } from 'lucide-react';
 
@@ -42,17 +43,30 @@ export default async function WatchMoviePage({ params, searchParams }: PageProps
   }
 
   const servers = movie.episodes || [];
-  const serverIndex = server ? parseInt(server, 10) : 0;
-  const validServerIndex = !isNaN(serverIndex) && serverIndex < servers.length ? serverIndex : 0;
+  const requestedServerIndex = server === undefined ? 0 : Number(server);
+  const validServerIndex = normalizeServerIndex(requestedServerIndex, servers.length);
 
   const currentServerGroup = servers[validServerIndex] || servers[0];
   const episodeList = currentServerGroup?.items || [];
 
-  // Find requested episode or default to first
-  let activeEpisode = episodeList.find((e) => e.slug === ep) || episodeList[0];
+  const activeEpisode = resolveEpisodeForServer({
+    requestedEpisodeSlug: ep,
+    targetEpisodes: episodeList,
+  });
 
-  if (!activeEpisode && episodeList.length > 0) {
-    activeEpisode = episodeList[0];
+  const serverNeedsCanonicalization =
+    server !== undefined &&
+    (requestedServerIndex !== validServerIndex || server !== String(validServerIndex));
+  const episodeNeedsCanonicalization =
+    activeEpisode !== null && activeEpisode.slug !== ep;
+
+  if (serverNeedsCanonicalization || episodeNeedsCanonicalization) {
+    const query = new URLSearchParams();
+    if (activeEpisode) {
+      query.set('ep', activeEpisode.slug);
+    }
+    query.set('server', String(validServerIndex));
+    redirect(`/xem-phim/${movie.slug}?${query.toString()}`);
   }
 
   // Find next episode in sequence
