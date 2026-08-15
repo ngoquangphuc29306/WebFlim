@@ -302,11 +302,13 @@ export function useHlsPlayer({
           ) return;
           type PlyrRuntimeOptions = NonNullable<ConstructorParameters<typeof PlyrClass>[1]> & {
             fullscreen: { enabled: boolean; fallback: boolean; iosNative: boolean };
+            keyboard?: { focused: boolean; global: boolean };
           };
           const playerOptions: PlyrRuntimeOptions = {
-            controls: ['play-large', 'play', 'progress', 'current-time', 'fullscreen'],
+            controls: ['play-large'],
             captions: { active: false, update: false },
             fullscreen: { enabled: true, fallback: true, iosNative: true },
+            keyboard: { focused: false, global: false },
           };
           const player = new PlyrClass(video, playerOptions);
           if (isCancelled) {
