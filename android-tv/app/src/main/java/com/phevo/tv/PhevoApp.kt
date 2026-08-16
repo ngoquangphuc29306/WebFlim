@@ -35,7 +35,7 @@ import com.phevo.tv.app.theme.PhevoTvColors
 import com.phevo.tv.app.theme.PhevoTvDimensions
 import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.data.fake.FakeMovieRepository
-import com.phevo.tv.data.repository.VsmovMovieRepository
+import com.phevo.tv.data.repository.KkPhimMovieRepository
 import com.phevo.tv.domain.model.PlayerSelection
 import com.phevo.tv.domain.repository.MovieRepository
 import com.phevo.tv.domain.repository.PhevoTvRepository
@@ -67,7 +67,7 @@ private val railDestinations = listOf(
 
 @Composable
 fun PhevoApp(
-    movieRepository: MovieRepository = remember { VsmovMovieRepository() },
+    movieRepository: MovieRepository = remember { KkPhimMovieRepository() },
     localRepository: PhevoTvRepository = remember {
         FakeMovieRepository(emptyWatchlist = true, emptyHistory = true)
     },
