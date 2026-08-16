@@ -36,10 +36,12 @@ import com.phevo.tv.app.theme.PhevoTvDimensions
 import com.phevo.tv.app.theme.PhevoTvTypography
 import com.phevo.tv.data.fake.FakeMovieRepository
 import com.phevo.tv.data.repository.KkPhimMovieRepository
+import com.phevo.tv.data.auth.AuthRepositoryFactory
 import com.phevo.tv.domain.model.PlayerSelection
 import com.phevo.tv.domain.repository.MovieRepository
 import com.phevo.tv.domain.repository.PhevoTvRepository
 import com.phevo.tv.ui.account.AccountScreen
+import com.phevo.tv.ui.account.AuthViewModel
 import com.phevo.tv.ui.common.NavigationRailItem
 import com.phevo.tv.ui.detail.DetailScreen
 import com.phevo.tv.ui.detail.DetailViewModel
@@ -81,6 +83,7 @@ fun PhevoApp(
     val contentFocusRequester = remember { FocusRequester() }
     val railFocusRequester = remember { FocusRequester() }
     val applicationContext = LocalContext.current.applicationContext
+    val authRepository = remember(applicationContext) { AuthRepositoryFactory.create(applicationContext) }
     val playbackControllerFactory = remember(applicationContext) {
         Media3PlaybackControllerFactory(applicationContext)
     }
@@ -96,6 +99,7 @@ fun PhevoApp(
     val playerViewModel: PlayerViewModel = viewModel(
         factory = PhevoViewModelFactory { PlayerViewModel(movieRepository, playbackControllerFactory) },
     )
+    val authViewModel: AuthViewModel = viewModel(factory = PhevoViewModelFactory { AuthViewModel(authRepository) })
     val showRail = destination != PhevoDestination.PLAYER
 
     BackHandler(enabled = destination != PhevoDestination.HOME) {
@@ -199,7 +203,7 @@ fun PhevoApp(
                         destination = PhevoDestination.DETAIL
                     },
                 )
-                PhevoDestination.ACCOUNT -> AccountScreen(contentFocusRequester)
+                PhevoDestination.ACCOUNT -> AccountScreen(authViewModel, contentFocusRequester)
                 PhevoDestination.DETAIL -> DetailScreen(
                     movieSlug = selectedMovieSlug,
                     viewModel = detailViewModel,

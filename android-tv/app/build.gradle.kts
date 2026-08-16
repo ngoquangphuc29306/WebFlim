@@ -4,6 +4,13 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+fun String.asBuildConfigLiteral(): String = replace("\\", "\\\\").replace("\"", "\\\"")
+
+val phevoSupabaseUrl = (project.findProperty("PHEVO_SUPABASE_URL") as String?).orEmpty().asBuildConfigLiteral()
+val phevoSupabaseAnonKey = (project.findProperty("PHEVO_SUPABASE_ANON_KEY") as String?).orEmpty().asBuildConfigLiteral()
+val phevoDeviceLinkFunctionUrl = (project.findProperty("PHEVO_DEVICE_LINK_FUNCTION_URL") as String?).orEmpty().asBuildConfigLiteral()
+val phevoDeviceLinkWebUrl = (project.findProperty("PHEVO_DEVICE_LINK_WEB_URL") as String?).orEmpty().asBuildConfigLiteral()
+
 android {
     namespace = "com.phevo.tv"
     compileSdk = 35
@@ -16,6 +23,11 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "SUPABASE_URL", "\"$phevoSupabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$phevoSupabaseAnonKey\"")
+        buildConfigField("String", "DEVICE_LINK_FUNCTION_URL", "\"$phevoDeviceLinkFunctionUrl\"")
+        buildConfigField("String", "DEVICE_LINK_WEB_URL", "\"$phevoDeviceLinkWebUrl\"")
     }
 
     buildTypes {
@@ -39,6 +51,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -66,6 +79,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.moshi)
+    implementation(libs.zxing.core)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
