@@ -17,7 +17,10 @@ object PlaybackBackendResolver {
 
 /** Restricts top-level embed navigation to the provider host family. */
 object EmbedUrlPolicy {
-    private const val ProviderEmbedDomain = "streamvsmov.com"
+    private val ProviderEmbedDomains = setOf(
+        "streamvsmov.com",
+        "player.phimapi.com",
+    )
 
     fun validateInitialUrl(value: String): Decision = validate(value)
 
@@ -36,7 +39,7 @@ object EmbedUrlPolicy {
     }
 
     private fun isProviderEmbedHost(host: String): Boolean =
-        host == ProviderEmbedDomain || host.endsWith(".$ProviderEmbedDomain")
+        ProviderEmbedDomains.any { domain -> host == domain || host.endsWith(".$domain") }
 
     sealed interface Decision {
         data class Allowed(val url: String) : Decision

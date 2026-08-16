@@ -4,6 +4,10 @@ import com.phevo.tv.data.remote.kkphim.KkPhimClient
 import com.phevo.tv.data.repository.KkPhimMovieRepository
 import com.phevo.tv.domain.model.DataResult
 import com.phevo.tv.domain.model.Episode
+import com.phevo.tv.domain.model.MovieDetail
+import com.phevo.tv.domain.model.Movie
+import com.phevo.tv.domain.model.MovieType
+import com.phevo.tv.domain.model.PlaybackSource
 import com.phevo.tv.domain.model.Server
 import com.phevo.tv.domain.repository.CatalogEndpoint
 import com.phevo.tv.domain.repository.CatalogFilters
@@ -17,6 +21,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import com.phevo.tv.ui.player.PlaybackSourceClassifier
 
 class KkPhimRepositoryTest {
     private lateinit var server: MockWebServer
@@ -69,6 +74,20 @@ class KkPhimRepositoryTest {
         assertEquals("tap-2", repository.resolveEpisodeOrNull(target, requested)!!.episodeSlug)
         assertEquals("tap-1", repository.resolveEpisodeOrNull(missing, requested)!!.episodeSlug)
         assertNull(repository.resolveEpisodeOrNull(empty, requested))
+    }
+
+    @Test
+    fun emptyServerClearsPlaybackSourceAndClassifiesAsMissing() = runBlocking {
+        val requested = Episode("tap-2", "Tập 2", m3u8Url = "https://stream.example.test/2.m3u8")
+        val resolved = repository.resolvePlaybackEpisode(
+            MovieDetail(Movie("mau-phim", "Mẫu Phim", type = MovieType.SERIES), "", emptyList()),
+            Server("Empty", emptyList()),
+            requested,
+        )
+
+        assertNull(resolved.m3u8Url)
+        assertNull(resolved.embedUrl)
+        assertEquals(PlaybackSource.Missing, PlaybackSourceClassifier.classify(resolved))
     }
 
     @Test
