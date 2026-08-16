@@ -26,6 +26,7 @@ export interface DbWatchlistRow {
   created_at: string;
   client_updated_at: string;
   server_updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface DbWatchHistoryRow {
@@ -41,6 +42,7 @@ export interface DbWatchHistoryRow {
   watched_at: string;
   client_updated_at: string;
   server_updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface DbPlaybackProgressRow {
@@ -59,6 +61,7 @@ export interface DbPlaybackProgressRow {
   created_at: string;
   client_updated_at: string;
   server_updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface DbPlayerPreferencesRow {
@@ -94,6 +97,8 @@ export function mapDbToWatchlistItem(row: DbWatchlistRow): MovieCardModel {
     quality: row.quality || undefined,
     categories,
     countries,
+    updatedAt: row.client_updated_at ? new Date(row.client_updated_at).getTime() : undefined,
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : undefined,
   };
 }
 
@@ -116,6 +121,7 @@ export function mapWatchlistItemToDb(
     categories_json: JSON.stringify(item.categories || []),
     countries_json: JSON.stringify(item.countries || []),
     client_updated_at: new Date(ts).toISOString(),
+    deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
   };
 }
 
@@ -129,6 +135,7 @@ export function mapDbToWatchHistoryItem(row: DbWatchHistoryRow): WatchHistoryIte
     serverName: row.server_name || '',
     serverIndex: row.server_index ?? undefined,
     updatedAt: new Date(row.client_updated_at || row.watched_at).getTime(),
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : undefined,
   };
 }
 
@@ -150,6 +157,7 @@ export function mapWatchHistoryItemToDb(
     server_name: item.serverName || null,
     watched_at: isoTime,
     client_updated_at: isoTime,
+    deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
   };
 }
 
@@ -166,6 +174,7 @@ export function mapDbToPlaybackProgress(row: DbPlaybackProgressRow): PlaybackPro
     duration: row.duration,
     completed: row.completed,
     updatedAt: new Date(row.client_updated_at).getTime(),
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : undefined,
   };
 }
 
@@ -188,6 +197,7 @@ export function mapPlaybackProgressToDb(
     duration: item.duration,
     completed: item.completed,
     client_updated_at: new Date(ts).toISOString(),
+    deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
   };
 }
 

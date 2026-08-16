@@ -289,9 +289,9 @@ class SyncEngine {
 
       // 3. Fetch remote cloud state in parallel
       const [cloudWatchlist, cloudHistory, cloudProgress, cloudPrefs] = await Promise.all([
-        watchlistGateway.list(userId),
-        historyGateway.list(userId),
-        progressGateway.list(userId),
+        watchlistGateway.listForSync ? watchlistGateway.listForSync(userId) : watchlistGateway.list(userId),
+        historyGateway.listForSync ? historyGateway.listForSync(userId) : historyGateway.list(userId),
+        progressGateway.listForSync ? progressGateway.listForSync(userId) : progressGateway.list(userId),
         preferencesGateway.get(userId),
       ]);
 
@@ -307,9 +307,9 @@ class SyncEngine {
         safeWriteJson(STORAGE_KEYS.preferences, prefsToSave, STORAGE_EVENTS.preferences);
       } else if (isPureGuestAdoption) {
         // Pure Guest -> First user login: Union merge legacy local guest items (even if queue was empty)
-        const localWatchlist = watchlistRepository.getAll();
-        const localHistory = watchHistoryRepository.getAll();
-        const localProgress = playbackProgressRepository.getAll();
+        const localWatchlist = watchlistRepository.getAllForSync();
+        const localHistory = watchHistoryRepository.getAllForSync();
+        const localProgress = playbackProgressRepository.getAllForSync();
         const localPrefs = playerPreferencesRepository.get();
 
         const mergedWatchlist = mergeWatchlist(localWatchlist, cloudWatchlist);
@@ -327,30 +327,31 @@ class SyncEngine {
           enqueueMutation({
             ownerUserId: userId,
             domain: 'watchlist',
-            action: 'upsert',
+            action: item.deletedAt ? 'remove' : 'upsert',
             movieSlug: item.slug,
-            payload: item,
+            payload: item.deletedAt ? undefined : item,
+            updatedAt: item.updatedAt || item.deletedAt,
           });
         }
         for (const item of localHistory) {
           enqueueMutation({
             ownerUserId: userId,
             domain: 'history',
-            action: 'upsert',
+            action: item.deletedAt ? 'remove' : 'upsert',
             movieSlug: item.slug,
-            payload: item,
-            updatedAt: item.updatedAt,
+            payload: item.deletedAt ? undefined : item,
+            updatedAt: item.updatedAt || item.deletedAt,
           });
         }
         for (const item of localProgress) {
           enqueueMutation({
             ownerUserId: userId,
             domain: 'progress',
-            action: 'upsert',
+            action: item.deletedAt ? 'remove' : 'upsert',
             movieSlug: item.movieSlug,
             episodeSlug: item.episodeSlug,
-            payload: item,
-            updatedAt: item.updatedAt,
+            payload: item.deletedAt ? undefined : item,
+            updatedAt: item.updatedAt || item.deletedAt,
           });
         }
         enqueueMutation({
@@ -363,82 +364,19 @@ class SyncEngine {
 
         await this.flushQueueWithRetry(userId, gen);
       } else {
-        // Same-user reconciliation: Apply current-user pending mutations OVER cloud snapshot
-        const pendingMutations = getPendingMutationsForUser(userId);
-
-        // Watchlist Reconciliation
-        let reconciledWatchlist: MovieCardModel[];
-        const hasWatchlistClear = pendingMutations.some((m) => m.domain === 'watchlist' && m.action === 'clear');
-        if (hasWatchlistClear) {
-          reconciledWatchlist = [];
-        } else {
-          const removedSlugs = new Set(
-            pendingMutations
-              .filter((m) => m.domain === 'watchlist' && m.action === 'remove' && m.movieSlug)
-              .map((m) => m.movieSlug!)
-          );
-          reconciledWatchlist = cloudWatchlist.filter((item) => !removedSlugs.has(item.slug));
-        }
-        const pendingWatchlistUpserts = pendingMutations.filter(
-          (m) => m.domain === 'watchlist' && m.action === 'upsert' && m.payload
+        // Same-user reconciliation: merge the local sync snapshot with cloud.
+        const reconciledWatchlist = mergeWatchlist(
+          watchlistRepository.getAllForSync(),
+          cloudWatchlist
         );
-        for (const m of pendingWatchlistUpserts) {
-          if (!reconciledWatchlist.some((item) => item.slug === m.movieSlug)) {
-            reconciledWatchlist.push(m.payload);
-          }
-        }
-
-        // History Reconciliation
-        let reconciledHistory: WatchHistoryItem[];
-        const hasHistoryClear = pendingMutations.some((m) => m.domain === 'history' && m.action === 'clear');
-        if (hasHistoryClear) {
-          reconciledHistory = [];
-        } else {
-          const removedSlugs = new Set(
-            pendingMutations
-              .filter((m) => m.domain === 'history' && m.action === 'remove' && m.movieSlug)
-              .map((m) => m.movieSlug!)
-          );
-          reconciledHistory = cloudHistory.filter((item) => !removedSlugs.has(item.slug));
-        }
-        const pendingHistoryUpserts = pendingMutations.filter(
-          (m) => m.domain === 'history' && m.action === 'upsert' && m.payload
+        const reconciledHistory = mergeHistory(
+          watchHistoryRepository.getAllForSync(),
+          cloudHistory
         );
-        for (const m of pendingHistoryUpserts) {
-          if (!reconciledHistory.some((item) => item.slug === m.movieSlug)) {
-            reconciledHistory.push(m.payload);
-          }
-        }
-
-        // Progress Reconciliation
-        let reconciledProgress: PlaybackProgress[];
-        const hasProgressClear = pendingMutations.some((m) => m.domain === 'progress' && m.action === 'clear');
-        if (hasProgressClear) {
-          reconciledProgress = [];
-        } else {
-          const removedKeys = new Set(
-            pendingMutations
-              .filter((m) => m.domain === 'progress' && m.action === 'remove' && m.key)
-              .map((m) => m.key!)
-          );
-          reconciledProgress = cloudProgress.filter(
-            (item) => !removedKeys.has(`${item.movieSlug}:${item.episodeSlug}`) && !removedKeys.has(item.movieSlug)
-          );
-        }
-        const pendingProgressUpserts = pendingMutations.filter(
-          (m) => m.domain === 'progress' && m.action === 'upsert' && m.payload
+        const reconciledProgress = mergeProgress(
+          playbackProgressRepository.getAllForSync(),
+          cloudProgress
         );
-        for (const m of pendingProgressUpserts) {
-          const key = `${m.payload.movieSlug}:${m.payload.episodeSlug}`;
-          const idx = reconciledProgress.findIndex((item) => `${item.movieSlug}:${item.episodeSlug}` === key);
-          if (idx >= 0) {
-            reconciledProgress[idx] = m.payload;
-          } else {
-            reconciledProgress.push(m.payload);
-          }
-        }
-
-        // Preferences Reconciliation
         const localPrefs = playerPreferencesRepository.get();
         const mergedPrefs = mergePreferences(localPrefs, cloudPrefs);
 
@@ -506,9 +444,9 @@ class SyncEngine {
         if (mutation.action === 'upsert' && mutation.payload) {
           await watchlistGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         } else if (mutation.action === 'remove' && mutation.movieSlug) {
-          await watchlistGateway.remove(userId, mutation.movieSlug);
+          await watchlistGateway.remove(userId, mutation.movieSlug, mutation.updatedAt);
         } else if (mutation.action === 'clear') {
-          await watchlistGateway.clear(userId);
+          await watchlistGateway.clear(userId, mutation.updatedAt);
         }
         break;
 
@@ -516,9 +454,9 @@ class SyncEngine {
         if (mutation.action === 'upsert' && mutation.payload) {
           await historyGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         } else if (mutation.action === 'remove' && mutation.movieSlug) {
-          await historyGateway.remove(userId, mutation.movieSlug);
+          await historyGateway.remove(userId, mutation.movieSlug, mutation.updatedAt);
         } else if (mutation.action === 'clear') {
-          await historyGateway.clear(userId);
+          await historyGateway.clear(userId, mutation.updatedAt);
         }
         break;
 
@@ -526,9 +464,9 @@ class SyncEngine {
         if (mutation.action === 'upsert' && mutation.payload) {
           await progressGateway.upsert(userId, mutation.payload, mutation.updatedAt);
         } else if (mutation.action === 'remove' && mutation.movieSlug) {
-          await progressGateway.remove(userId, mutation.movieSlug, mutation.episodeSlug);
+          await progressGateway.remove(userId, mutation.movieSlug, mutation.episodeSlug, mutation.updatedAt);
         } else if (mutation.action === 'clear') {
-          await progressGateway.clear(userId);
+          await progressGateway.clear(userId, mutation.updatedAt);
         }
         break;
 
@@ -593,6 +531,7 @@ class SyncEngine {
       domain: 'watchlist',
       action: 'remove',
       movieSlug,
+      updatedAt: Date.now(),
     });
     if (this.currentUserId) {
       this.triggerSync();
@@ -630,6 +569,7 @@ class SyncEngine {
       domain: 'history',
       action: 'remove',
       movieSlug,
+      updatedAt: Date.now(),
     });
     if (this.currentUserId) {
       this.triggerSync();
@@ -665,6 +605,7 @@ class SyncEngine {
       movieSlug,
       episodeSlug,
       key,
+      updatedAt: Date.now(),
     });
     if (this.currentUserId) {
       this.triggerSync();

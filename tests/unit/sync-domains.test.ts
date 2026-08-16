@@ -23,6 +23,7 @@ import { LocalWatchlistRepository } from '@/lib/persistence/watchlist/local-watc
 import { LocalWatchHistoryRepository } from '@/lib/persistence/history/local-history.repository';
 import { LocalPlaybackProgressRepository } from '@/lib/persistence/progress/local-progress.repository';
 import { LocalPlayerPreferencesRepository } from '@/lib/persistence/player-preferences/local-preferences.repository';
+import { mapDbToPlaybackProgress } from '@/lib/supabase/types';
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -123,6 +124,7 @@ describe('sync domain contracts and local persistence resilience', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     removeBrowserStorage();
   });
 
@@ -182,6 +184,170 @@ describe('sync domain contracts and local persistence resilience', () => {
     expect(merged).toHaveLength(2);
     expect(merged.find((item) => item.episodeSlug === 'episode-1')?.currentTime).toBe(40);
     expect(merged.find((item) => item.episodeSlug === 'episode-2')?.currentTime).toBe(10);
+  });
+
+  it('keeps a newer watchlist tombstone over a stale live record', () => {
+    const merged = mergeWatchlist(
+      [movie('movie', { updatedAt: 10 })],
+      [movie('movie', { updatedAt: 20, deletedAt: 20 })]
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].deletedAt).toBe(20);
+  });
+
+  it('allows a newer watchlist re-add to revive a tombstoned row', () => {
+    const merged = mergeWatchlist(
+      [movie('movie', { updatedAt: 30 })],
+      [movie('movie', { updatedAt: 20, deletedAt: 20 })]
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].deletedAt).toBeUndefined();
+    expect(merged[0].updatedAt).toBe(30);
+  });
+
+  it('makes an equal-timestamp tombstone beat a live history record', () => {
+    const merged = mergeHistory(
+      [history('movie', 100)],
+      [{ ...history('movie', 100), deletedAt: 100 }]
+    );
+
+    expect(merged[0].deletedAt).toBe(100);
+  });
+
+  it('preserves intentional progress rewind when its timestamp is newer', () => {
+    const merged = mergeProgress(
+      [progress('movie', 'episode-1', 200, 5)],
+      [progress('movie', 'episode-1', 100, 20)]
+    );
+
+    expect(merged[0].currentTime).toBe(5);
+  });
+
+  it('hides local tombstones from UI reads while retaining them for sync', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(200);
+    const repository = new LocalWatchlistRepository();
+    repository.add(movie('movie'));
+    repository.remove('movie');
+
+    expect(repository.getAll()).toEqual([]);
+    expect(repository.getAllForSync()[0]).toMatchObject({
+      slug: 'movie',
+      deletedAt: 200,
+      updatedAt: 200,
+    });
+  });
+
+  it('keeps a pre-tombstone progress row live when deleted_at is null', () => {
+    const mapped = mapDbToPlaybackProgress({
+      id: 'row-1',
+      user_id: 'user-a',
+      movie_slug: 'movie',
+      movie_title: 'Movie',
+      poster_url: null,
+      episode_slug: 'episode-1',
+      episode_name: 'Tập 1',
+      server_index: null,
+      server_name: null,
+      current_time: 20,
+      duration: 100,
+      completed: false,
+      created_at: '2026-08-16T00:00:00.000Z',
+      client_updated_at: '2026-08-16T00:01:00.000Z',
+      server_updated_at: '2026-08-16T00:01:01.000Z',
+      deleted_at: null,
+    });
+
+    expect(mapped).toMatchObject({
+      movieSlug: 'movie',
+      episodeSlug: 'episode-1',
+      currentTime: 20,
+      duration: 100,
+      deletedAt: undefined,
+    });
+  });
+
+  it('preserves a progress tombstone when saving another episode', () => {
+    const repository = new LocalPlaybackProgressRepository();
+    const { updatedAt: _tap01UpdatedAt, ...tap01 } = progress('movie', 'tap-01', 1, 10);
+    const { updatedAt: _tap02UpdatedAt, ...tap02 } = progress('movie', 'tap-02', 3, 30);
+    repository.save(tap01);
+    repository.remove('movie', 'tap-01');
+    repository.save(tap02);
+
+    expect(repository.getAll().map((item) => item.episodeSlug)).toEqual(['tap-02']);
+    expect(repository.getAllForSync().map((item) => item.episodeSlug).sort()).toEqual(['tap-01', 'tap-02']);
+    expect(repository.getAllForSync().find((item) => item.episodeSlug === 'tap-01')?.deletedAt).toBeDefined();
+  });
+
+  it('revives the same progress identity after delete without creating a duplicate', () => {
+    vi.spyOn(Date, 'now')
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(200)
+      .mockReturnValueOnce(300);
+    const repository = new LocalPlaybackProgressRepository();
+    repository.save({ movieSlug: 'movie', movieTitle: 'Movie', episodeSlug: 'tap-01', currentTime: 10, duration: 100 });
+    repository.remove('movie', 'tap-01');
+    repository.save({ movieSlug: 'movie', movieTitle: 'Movie', episodeSlug: 'tap-01', currentTime: 20, duration: 100 });
+
+    const records = repository.getAllForSync().filter((item) => item.episodeSlug === 'tap-01');
+    expect(records).toHaveLength(1);
+    expect(records[0].deletedAt).toBeUndefined();
+    expect(records[0].updatedAt).toBe(300);
+  });
+
+  it('keeps history tombstones beyond the visible 30-item limit', () => {
+    const repository = new LocalWatchHistoryRepository();
+    for (let index = 0; index < 31; index += 1) {
+      const { updatedAt: _updatedAt, ...item } = history(`movie-${index}`, index);
+      repository.save(item);
+    }
+    for (let index = 0; index < 31; index += 1) {
+      repository.remove(`movie-${index}`);
+    }
+    const { updatedAt: _newUpdatedAt, ...newItem } = history('new-movie', 100);
+    repository.save(newItem);
+
+    expect(repository.getAll()).toHaveLength(1);
+    expect(repository.getAllForSync()).toHaveLength(32);
+    expect(repository.getAllForSync().filter((item) => item.deletedAt)).toHaveLength(31);
+  });
+
+  it('keeps progress tombstones beyond the visible 50-item limit', () => {
+    const repository = new LocalPlaybackProgressRepository();
+    for (let index = 0; index < 51; index += 1) {
+      repository.save({
+        movieSlug: 'movie',
+        movieTitle: 'Movie',
+        episodeSlug: `tap-${index}`,
+        currentTime: 10,
+        duration: 100,
+      });
+    }
+    for (let index = 0; index < 51; index += 1) {
+      repository.remove('movie', `tap-${index}`);
+    }
+    repository.save({
+      movieSlug: 'movie',
+      movieTitle: 'Movie',
+      episodeSlug: 'new-episode',
+      currentTime: 10,
+      duration: 100,
+    });
+
+    expect(repository.getAll()).toHaveLength(1);
+    expect(repository.getAllForSync()).toHaveLength(52);
+    expect(repository.getAllForSync().filter((item) => item.deletedAt)).toHaveLength(51);
+  });
+
+  it('returns the complete history merge state without a presentation limit', () => {
+    const merged = mergeHistory(
+      Array.from({ length: 31 }, (_, index) => history(`movie-${index}`, index)),
+      []
+    );
+
+    expect(merged).toHaveLength(31);
   });
 
   it('uses cloud preferences only when cloud is at least as new', () => {

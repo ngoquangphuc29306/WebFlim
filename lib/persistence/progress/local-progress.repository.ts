@@ -4,7 +4,6 @@ import {
   STORAGE_KEYS,
   STORAGE_EVENTS,
   safeWriteJson,
-  safeRemoveItem,
   subscribeStorageEvent,
   isBrowser,
 } from '../storage';
@@ -17,21 +16,24 @@ const EMPTY_PROGRESS_LIST: PlaybackProgress[] = [];
 export class LocalPlaybackProgressRepository implements PlaybackProgressRepository {
   private cachedRaw: string | null = null;
   private cachedParsed: PlaybackProgress[] = EMPTY_PROGRESS_LIST;
+  private cachedVisible: PlaybackProgress[] = EMPTY_PROGRESS_LIST;
 
   getAll(): PlaybackProgress[] {
     if (!isBrowser()) return EMPTY_PROGRESS_LIST;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw === this.cachedRaw) return this.cachedParsed;
+      if (raw === this.cachedRaw) return this.cachedVisible;
       this.cachedRaw = raw;
       if (!raw) {
         this.cachedParsed = EMPTY_PROGRESS_LIST;
+        this.cachedVisible = EMPTY_PROGRESS_LIST;
         return EMPTY_PROGRESS_LIST;
       }
 
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) {
         this.cachedParsed = EMPTY_PROGRESS_LIST;
+        this.cachedVisible = EMPTY_PROGRESS_LIST;
         return EMPTY_PROGRESS_LIST;
       }
 
@@ -58,6 +60,48 @@ export class LocalPlaybackProgressRepository implements PlaybackProgressReposito
         }));
 
       this.cachedParsed = validated;
+      this.cachedVisible = validated
+        .filter((item) => item.deletedAt == null)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, MAX_PROGRESS_ITEMS);
+      return this.cachedVisible;
+    } catch {
+      return EMPTY_PROGRESS_LIST;
+    }
+  }
+
+  getAllForSync(): PlaybackProgress[] {
+    if (!isBrowser()) return EMPTY_PROGRESS_LIST;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw === this.cachedRaw) return this.cachedParsed;
+      this.cachedRaw = raw;
+      if (!raw) {
+        this.cachedParsed = EMPTY_PROGRESS_LIST;
+        this.cachedVisible = EMPTY_PROGRESS_LIST;
+        return EMPTY_PROGRESS_LIST;
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        this.cachedParsed = EMPTY_PROGRESS_LIST;
+        this.cachedVisible = EMPTY_PROGRESS_LIST;
+        return EMPTY_PROGRESS_LIST;
+      }
+      this.cachedParsed = parsed.filter((item): item is PlaybackProgress =>
+        Boolean(item) &&
+        typeof item.movieSlug === 'string' &&
+        typeof item.episodeSlug === 'string' &&
+        typeof item.currentTime === 'number' &&
+        typeof item.duration === 'number' &&
+        isFinite(item.currentTime) &&
+        isFinite(item.duration) &&
+        item.currentTime >= 0 &&
+        item.duration > 0
+      );
+      this.cachedVisible = this.cachedParsed
+        .filter((item) => item.deletedAt == null)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, MAX_PROGRESS_ITEMS);
       return this.cachedParsed;
     } catch {
       return EMPTY_PROGRESS_LIST;
@@ -65,7 +109,7 @@ export class LocalPlaybackProgressRepository implements PlaybackProgressReposito
   }
 
   get(movieSlug: string, episodeSlug: string): PlaybackProgress | null {
-    const list = this.getAll();
+    const list = this.getAllForSync();
     return list.find((p) => p.movieSlug === movieSlug && p.episodeSlug === episodeSlug) || null;
   }
 
@@ -74,38 +118,42 @@ export class LocalPlaybackProgressRepository implements PlaybackProgressReposito
     if (!item.movieSlug || !item.episodeSlug) return;
     if (!isFinite(item.currentTime) || !isFinite(item.duration) || item.duration <= 0) return;
 
-    const list = this.getAll();
+    const list = this.getAllForSync();
     const isCompleted = item.currentTime / item.duration >= COMPLETION_THRESHOLD;
 
     const newItem: PlaybackProgress = {
       ...item,
       completed: isCompleted,
       updatedAt: Date.now(),
+      deletedAt: undefined,
     };
 
     const filtered = list.filter(
       (p) => !(p.movieSlug === item.movieSlug && p.episodeSlug === item.episodeSlug)
     );
 
-    const updated = [newItem, ...filtered].slice(0, MAX_PROGRESS_ITEMS);
+    const updated = [newItem, ...filtered];
     this.saveList(updated);
   }
 
   remove(movieSlug: string, episodeSlug?: string): void {
     if (!isBrowser()) return;
-    const list = this.getAll();
-
-    const updated = episodeSlug
-      ? list.filter((p) => !(p.movieSlug === movieSlug && p.episodeSlug === episodeSlug))
-      : list.filter((p) => p.movieSlug !== movieSlug);
+    const list = this.getAllForSync();
+    const timestamp = Date.now();
+    const updated = list.map((item) => {
+      const matches = episodeSlug
+        ? item.movieSlug === movieSlug && item.episodeSlug === episodeSlug
+        : item.movieSlug === movieSlug;
+      return matches ? { ...item, updatedAt: timestamp, deletedAt: timestamp } : item;
+    });
 
     this.saveList(updated);
   }
 
   clear(): void {
-    safeRemoveItem(STORAGE_KEY, EVENT_NAME);
-    this.cachedRaw = null;
-    this.cachedParsed = EMPTY_PROGRESS_LIST;
+    const list = this.getAllForSync();
+    const timestamp = Date.now();
+    this.saveList(list.map((item) => ({ ...item, updatedAt: timestamp, deletedAt: timestamp })));
   }
 
   subscribe(callback: () => void): () => void {
@@ -115,6 +163,10 @@ export class LocalPlaybackProgressRepository implements PlaybackProgressReposito
   private saveList(list: PlaybackProgress[]): void {
     safeWriteJson(STORAGE_KEY, list, EVENT_NAME);
     this.cachedParsed = list;
+    this.cachedVisible = list
+      .filter((item) => item.deletedAt == null)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, MAX_PROGRESS_ITEMS);
     try {
       this.cachedRaw = JSON.stringify(list);
     } catch {

@@ -2,6 +2,7 @@ import { WatchlistItem } from './watchlist.types';
 
 export interface WatchlistRepository {
   getAll(): WatchlistItem[];
+  getAllForSync(): WatchlistItem[];
   has(movieSlug: string): boolean;
   add(item: WatchlistItem): void;
   remove(movieSlug: string): void;

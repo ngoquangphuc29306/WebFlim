@@ -137,6 +137,9 @@ export interface MovieCardModel {
   countries: CountryModel[];
   providerIdentity?: ProviderIdentity;
   externalIdentity?: ExternalIdentity;
+  /** Sync metadata; hidden from normal UI reads. */
+  updatedAt?: number;
+  deletedAt?: number;
 }
 
 export interface EpisodeItemModel {
@@ -184,6 +187,7 @@ export interface PlaybackProgress {
   duration: number;
   completed: boolean;
   updatedAt: number;
+  deletedAt?: number;
 }
 
 export interface WatchHistoryItem {
@@ -195,4 +199,5 @@ export interface WatchHistoryItem {
   serverName: string;
   serverIndex?: number;
   updatedAt: number;
+  deletedAt?: number;
 }

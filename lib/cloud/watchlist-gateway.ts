@@ -9,6 +9,11 @@ import { CloudSyncError } from './cloud-error';
 
 export const watchlistGateway = {
   async list(userId: string): Promise<MovieCardModel[]> {
+    const rows = await this.listForSync(userId);
+    return rows.filter((item) => item.deletedAt == null);
+  },
+
+  async listForSync(userId: string): Promise<MovieCardModel[]> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'watchlist', 'list');
@@ -45,15 +50,16 @@ export const watchlistGateway = {
     }
   },
 
-  async remove(userId: string, movieSlug: string): Promise<void> {
+  async remove(userId: string, movieSlug: string, clientUpdatedAt = Date.now()): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'watchlist', 'remove');
     }
 
+    const isoTime = new Date(clientUpdatedAt).toISOString();
     const { error } = await supabase
       .from('watchlist')
-      .delete()
+      .update({ deleted_at: isoTime, client_updated_at: isoTime })
       .eq('user_id', userId)
       .eq('movie_slug', movieSlug);
 
@@ -63,16 +69,18 @@ export const watchlistGateway = {
     }
   },
 
-  async clear(userId: string): Promise<void> {
+  async clear(userId: string, clientUpdatedAt = Date.now()): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'watchlist', 'clear');
     }
 
+    const isoTime = new Date(clientUpdatedAt).toISOString();
     const { error } = await supabase
       .from('watchlist')
-      .delete()
-      .eq('user_id', userId);
+      .update({ deleted_at: isoTime, client_updated_at: isoTime })
+      .eq('user_id', userId)
+      .is('deleted_at', null);
 
     if (error) {
       console.warn('[WatchlistGateway] Clear failed:', error.message);

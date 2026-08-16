@@ -8,7 +8,6 @@ import { PlayerPreferences } from '@/lib/persistence/player-preferences';
 export function mergeWatchlist(local: MovieCardModel[], cloud: MovieCardModel[]): MovieCardModel[] {
   const map = new Map<string, MovieCardModel>();
 
-  // Add cloud items first
   for (const item of cloud) {
     if (item.slug) {
       map.set(item.slug, item);
@@ -22,6 +21,15 @@ export function mergeWatchlist(local: MovieCardModel[], cloud: MovieCardModel[])
     if (!existing) {
       map.set(item.slug, item);
     } else {
+      const existingTime = existing.updatedAt || existing.deletedAt || 0;
+      const itemTime = item.updatedAt || item.deletedAt || 0;
+      if (itemTime < existingTime || (itemTime === existingTime && Boolean(existing.deletedAt) && !item.deletedAt)) {
+        continue;
+      }
+      if (item.deletedAt || existing.deletedAt) {
+        map.set(item.slug, item);
+        continue;
+      }
       // Merge properties prefer richer metadata
       map.set(item.slug, {
         ...existing,
@@ -50,17 +58,20 @@ export function mergeHistory(local: WatchHistoryItem[], cloud: WatchHistoryItem[
     if (!existing) {
       map.set(item.slug, item);
     } else {
-      const existingTime = existing.updatedAt || 0;
-      const itemTime = item.updatedAt || 0;
-      if (itemTime > existingTime) {
+      const existingTime = existing.updatedAt || existing.deletedAt || 0;
+      const itemTime = item.updatedAt || item.deletedAt || 0;
+      if (itemTime > existingTime || (itemTime === existingTime && Boolean(item.deletedAt) && !existing.deletedAt)) {
         map.set(item.slug, item);
       }
     }
   }
 
   const merged = Array.from(map.values());
-  merged.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  return merged.slice(0, 30); // Max 30 history items
+  merged.sort(
+    (a, b) =>
+      (b.updatedAt || b.deletedAt || 0) - (a.updatedAt || a.deletedAt || 0)
+  );
+  return merged;
 }
 
 /**
@@ -77,9 +88,9 @@ export function mergeProgress(local: PlaybackProgress[], cloud: PlaybackProgress
     if (!existing) {
       map.set(key, item);
     } else {
-      const existingTime = existing.updatedAt || 0;
-      const itemTime = item.updatedAt || 0;
-      if (itemTime >= existingTime) {
+      const existingTime = existing.updatedAt || existing.deletedAt || 0;
+      const itemTime = item.updatedAt || item.deletedAt || 0;
+      if (itemTime > existingTime || (itemTime === existingTime && Boolean(item.deletedAt) && !existing.deletedAt)) {
         map.set(key, item);
       }
     }

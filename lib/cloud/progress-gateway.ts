@@ -9,6 +9,11 @@ import { CloudSyncError } from './cloud-error';
 
 export const progressGateway = {
   async list(userId: string): Promise<PlaybackProgress[]> {
+    const rows = await this.listForSync(userId);
+    return rows.filter((item) => item.deletedAt == null);
+  },
+
+  async listForSync(userId: string): Promise<PlaybackProgress[]> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'progress', 'list');
@@ -64,13 +69,18 @@ export const progressGateway = {
     }
   },
 
-  async remove(userId: string, movieSlug: string, episodeSlug?: string): Promise<void> {
+  async remove(userId: string, movieSlug: string, episodeSlug?: string, clientUpdatedAt = Date.now()): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'progress', 'remove');
     }
 
-    let query = supabase.from('playback_progress').delete().eq('user_id', userId).eq('movie_slug', movieSlug);
+    const isoTime = new Date(clientUpdatedAt).toISOString();
+    let query = supabase
+      .from('playback_progress')
+      .update({ deleted_at: isoTime, client_updated_at: isoTime })
+      .eq('user_id', userId)
+      .eq('movie_slug', movieSlug);
     if (episodeSlug) {
       query = query.eq('episode_slug', episodeSlug);
     }
@@ -82,16 +92,18 @@ export const progressGateway = {
     }
   },
 
-  async clear(userId: string): Promise<void> {
+  async clear(userId: string, clientUpdatedAt = Date.now()): Promise<void> {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       throw new CloudSyncError('Supabase client unavailable', undefined, 'progress', 'clear');
     }
 
+    const isoTime = new Date(clientUpdatedAt).toISOString();
     const { error } = await supabase
       .from('playback_progress')
-      .delete()
-      .eq('user_id', userId);
+      .update({ deleted_at: isoTime, client_updated_at: isoTime })
+      .eq('user_id', userId)
+      .is('deleted_at', null);
 
     if (error) {
       console.warn('[ProgressGateway] Clear failed:', error.message);

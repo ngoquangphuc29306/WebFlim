@@ -2,6 +2,7 @@ import { WatchHistoryItem } from './history.types';
 
 export interface WatchHistoryRepository {
   getAll(): WatchHistoryItem[];
+  getAllForSync(): WatchHistoryItem[];
   save(item: Omit<WatchHistoryItem, 'updatedAt'>): void;
   remove(movieSlug: string): void;
   clear(): void;
