@@ -627,6 +627,10 @@ private fun PlayerOverlay(
                         onSeekBack()
                         onInteraction()
                     },
+                    modifier = Modifier.onPlayerCenter {
+                        onSeekBack()
+                        onInteraction()
+                    },
                     primary = false,
                 )
                 PhevoTvButton(
@@ -637,19 +641,18 @@ private fun PlayerOverlay(
                     },
                     modifier = Modifier
                         .focusRequester(playButtonFocusRequester)
-                        .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                            if (keyEvent.key != Key.DirectionCenter && keyEvent.key != Key.Enter) {
-                                return@onPreviewKeyEvent false
-                            }
+                        .onPlayerCenter {
                             if (state.isPlaying) onPause() else onPlay()
                             onInteraction()
-                            true
                         },
                 )
                 PhevoTvButton(
                     label = "Tiến 10 giây",
                     onClick = {
+                        onSeekForward()
+                        onInteraction()
+                    },
+                    modifier = Modifier.onPlayerCenter {
                         onSeekForward()
                         onInteraction()
                     },
@@ -676,6 +679,10 @@ private fun PlayerOverlay(
                             onPreviousEpisode()
                             onInteraction()
                         },
+                        modifier = Modifier.onPlayerCenter {
+                            onPreviousEpisode()
+                            onInteraction()
+                        },
                         primary = false,
                     )
                 }
@@ -685,6 +692,10 @@ private fun PlayerOverlay(
                     PhevoTvButton(
                         label = "Danh sách tập",
                         onClick = {
+                            onOpenEpisodePanel()
+                            onInteraction()
+                        },
+                        modifier = Modifier.onPlayerCenter {
                             onOpenEpisodePanel()
                             onInteraction()
                         },
@@ -699,6 +710,10 @@ private fun PlayerOverlay(
                             onOpenServerPanel()
                             onInteraction()
                         },
+                        modifier = Modifier.onPlayerCenter {
+                            onOpenServerPanel()
+                            onInteraction()
+                        },
                         primary = false,
                     )
                 }
@@ -710,6 +725,10 @@ private fun PlayerOverlay(
                             onNextEpisode()
                             onInteraction()
                         },
+                        modifier = Modifier.onPlayerCenter {
+                            onNextEpisode()
+                            onInteraction()
+                        },
                         primary = false,
                     )
                 }
@@ -717,6 +736,10 @@ private fun PlayerOverlay(
                 PhevoTvButton(
                     label = "Quay lại",
                     onClick = {
+                        onBack()
+                        onInteraction()
+                    },
+                    modifier = Modifier.onPlayerCenter {
                         onBack()
                         onInteraction()
                     },
@@ -1085,7 +1108,9 @@ private fun EpisodePanel(
                         episode = episode,
                         selected = episode.episodeSlug == currentEpisodeSlug,
                         onClick = { onSelectEpisode(episode.episodeSlug) },
-                        modifier = Modifier.focusRequester(focusRequester),
+                        modifier = Modifier
+                            .focusRequester(focusRequester)
+                            .onPlayerCenter { onSelectEpisode(episode.episodeSlug) },
                     )
                 }
             }
@@ -1173,6 +1198,7 @@ private fun ServerPanel(
                                 color = borderColor,
                                 shape = RoundedCornerShape(8.dp),
                             )
+                            .onPlayerCenter { onSelectServer(index) }
                             .clickable { onSelectServer(index) }
                             .background(backgroundColor, RoundedCornerShape(8.dp))
                             .padding(horizontal = PhevoTvDimensions.SpaceMD),
@@ -1189,6 +1215,23 @@ private fun ServerPanel(
         }
     }
 }
+
+private fun Modifier.onPlayerCenter(action: () -> Unit): Modifier =
+    onPreviewKeyEvent { keyEvent ->
+        if (keyEvent.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        if (keyEvent.key != Key.DirectionCenter && keyEvent.key != Key.Enter) {
+            return@onPreviewKeyEvent false
+        }
+        action()
+        true
+    }.onKeyEvent { keyEvent ->
+        if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
+        if (keyEvent.key != Key.DirectionCenter && keyEvent.key != Key.Enter) {
+            return@onKeyEvent false
+        }
+        action()
+        true
+    }
 
 private enum class PlayerControlsState {
     Hidden,
