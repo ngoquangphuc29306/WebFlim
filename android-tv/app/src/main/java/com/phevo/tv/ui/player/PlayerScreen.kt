@@ -54,6 +54,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
@@ -634,7 +635,17 @@ private fun PlayerOverlay(
                         if (state.isPlaying) onPause() else onPlay()
                         onInteraction()
                     },
-                    modifier = Modifier.focusRequester(playButtonFocusRequester),
+                    modifier = Modifier
+                        .focusRequester(playButtonFocusRequester)
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            if (keyEvent.key != Key.DirectionCenter && keyEvent.key != Key.Enter) {
+                                return@onPreviewKeyEvent false
+                            }
+                            if (state.isPlaying) onPause() else onPlay()
+                            onInteraction()
+                            true
+                        },
                 )
                 PhevoTvButton(
                     label = "Tiến 10 giây",
