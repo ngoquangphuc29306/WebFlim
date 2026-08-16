@@ -1,0 +1,9 @@
+{
+  "status": true,
+  "data": {
+    "items": [
+      { "year": 2026, "name": "2026", "slug": "2026" },
+      { "year": "2025", "name": "2025", "slug": "2025" }
+    ]
+  }
+}

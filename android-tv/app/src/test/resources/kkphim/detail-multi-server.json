@@ -1,0 +1,42 @@
+{
+  "status": true,
+  "data": {
+    "APP_DOMAIN_CDN_IMAGE": "https://images.example.test",
+    "item": {
+      "_id": 101,
+      "name": "Mẫu Phim",
+      "origin_name": "Sample Movie",
+      "slug": "mau-phim",
+      "poster_url": "/poster.jpg",
+      "thumb_url": "/backdrop.jpg",
+      "year": "2026",
+      "type": "series",
+      "quality": "FHD",
+      "lang": "Vietsub",
+      "episode_current": "Tập 2",
+      "episode_total": 12,
+      "time": "45 phút",
+      "tmdb": { "id": 501, "type": "tv", "season": 1, "vote_average": "8.2" },
+      "content": "<p>Mô tả <b>mẫu</b></p>",
+      "actor": ["Diễn viên A"],
+      "director": ["Đạo diễn B"],
+      "category": [{ "id": 1, "name": "Hành động", "slug": "hanh-dong" }],
+      "country": [{ "id": 2, "name": "Mỹ", "slug": "au-my" }],
+      "episodes": [
+        {
+          "server_name": "Vietsub",
+          "server_data": [
+            { "name": "Tập 2", "slug": "tap-2", "filename": "tap-2", "link_m3u8": "https://stream.example.test/2.m3u8", "link_embed": "https://embed.example.test/2" },
+            { "name": "Tập 1", "slug": "tap-1", "filename": "tap-1", "link_embed": "https://embed.example.test/1" }
+          ]
+        },
+        {
+          "server_name": "Lồng Tiếng",
+          "server_data": [
+            { "name": "Tập 1", "slug": "tap-1", "link_m3u8": "https://stream.example.test/dub-1.m3u8" }
+          ]
+        }
+      ]
+    }
+  }
+}

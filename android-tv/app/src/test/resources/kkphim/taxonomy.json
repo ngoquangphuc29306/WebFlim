@@ -1,0 +1,9 @@
+{
+  "status": true,
+  "data": {
+    "items": [
+      { "id": 1, "name": "Hành động", "slug": "hanh-dong" },
+      { "_id": "2", "name": "Hàn Quốc", "slug": "han-quoc" }
+    ]
+  }
+}

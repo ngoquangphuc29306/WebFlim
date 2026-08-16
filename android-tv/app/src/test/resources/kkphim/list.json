@@ -1,0 +1,31 @@
+{
+  "status": true,
+  "data": {
+    "APP_DOMAIN_CDN_IMAGE": "https://images.example.test",
+    "items": [
+      {
+        "_id": 101,
+        "name": "Mẫu Phim",
+        "origin_name": "Sample Movie",
+        "slug": "mau-phim",
+        "poster_url": "/poster.jpg",
+        "thumb_url": "//images.example.test/thumb.jpg",
+        "year": 2026,
+        "type": "single",
+        "quality": "FHD",
+        "lang": "Vietsub",
+        "tmdb": { "id": 501, "type": "movie", "vote_average": 8.2 },
+        "category": [{ "id": 1, "name": "Hành động", "slug": "hanh-dong" }],
+        "country": [{ "id": 2, "name": "Mỹ", "slug": "au-my" }]
+      }
+    ],
+    "params": {
+      "pagination": {
+        "totalItems": 49,
+        "totalItemsPerPage": 24,
+        "currentPage": 2,
+        "totalPages": 3
+      }
+    }
+  }
+}
