@@ -151,7 +151,10 @@ class PlayerViewModel(
         val currentSlug = _state.value.episodeSlug
         val matchingEpisode = currentSlug?.let { slug -> server.episodes.firstOrNull { it.episodeSlug == slug } }
         val episode = matchingEpisode ?: server.episodes.firstOrNull()
-            ?: return fail(PlayerError.MissingSource("Selected server has no episodes"))
+            ?: return transitionToUnavailable(
+                server = server,
+                serverIndex = serverIndex,
+            )
         val preservedPosition = if (matchingEpisode != null) currentPosition() else 0L
         emitProgress(PlaybackProgressReason.SOURCE_SWITCH)
         requestPlaybackEpisode(server, serverIndex, episode, preservedPosition)
@@ -412,9 +415,38 @@ class PlayerViewModel(
     private fun currentServer(): Server? = _state.value.serverIndex?.let { detail?.servers?.getOrNull(it) }
 
     private fun releaseNativeController() {
-        controller?.setListener(null)
-        controller?.release()
+        val activeController = controller ?: return
         controller = null
+        activeController.setListener(null)
+        activeController.stop()
+        activeController.release()
+    }
+
+    private fun transitionToUnavailable(server: Server, serverIndex: Int) {
+        playbackResolutionGeneration++
+        val generation = ++sourceGeneration
+        stopProgressPolling()
+        releaseNativeController()
+        _state.value = _state.value.copy(
+            episodeSlug = null,
+            episodeName = null,
+            serverIndex = serverIndex,
+            serverName = server.serverName,
+            servers = detail?.servers.orEmpty(),
+            playbackStatus = PlaybackStatus.UNSUPPORTED,
+            source = PlaybackSource.Missing,
+            backend = PlaybackBackend.Unavailable,
+            isPlaying = false,
+            positionMs = 0L,
+            durationMs = 0L,
+            bufferedPositionMs = 0L,
+            hasRenderedFirstFrame = false,
+            error = null,
+            hasPreviousEpisode = false,
+            hasNextEpisode = false,
+            canRetry = false,
+            sourceGeneration = generation,
+        )
     }
 
     private fun fail(error: PlayerError) {

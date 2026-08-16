@@ -340,7 +340,7 @@ fun PlayerScreen(
                     onBack = onBackDetail,
                 )
             }
-        } else {
+        } else if (isNativeBackend) {
             // VIDEO SURFACE: current Media3 player is reattached after async recovery.
             AndroidView(
                 factory = { context ->

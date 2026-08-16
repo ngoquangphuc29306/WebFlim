@@ -37,6 +37,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -154,10 +155,63 @@ class PlayerViewModelTest {
     @Test
     fun serverSwitchUsesExistingDetailFallbackWhenEpisodeIsMissing() = runTest {
         val controller = FakePlaybackController(position = 72_000L)
+        val progressEvents = mutableListOf<PlaybackProgressEvent>()
         val detail = detail().copy(
             servers = detail().servers + Server(
                 "Server C",
                 listOf(Episode("special-1", "Special", m3u8Url = "https://media.example/special.m3u8")),
+            ),
+        )
+        val viewModel = playerViewModel(controller, detail)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.progressEvents.collect { progressEvents += it }
+        }
+        viewModel.start(PlayerSelection("movie", "episode-2", 0, "Server A"))
+        runCurrent()
+
+        viewModel.switchServer(2)
+
+        assertEquals("special-1", viewModel.state.value.episodeSlug)
+        assertEquals(0L, controller.prepares.last().startPositionMs)
+        assertEquals("Server C", viewModel.state.value.serverName)
+        assertEquals(PlaybackSource.DirectHls("https://media.example/special.m3u8"), controller.prepares.last().source)
+        controller.play()
+        viewModel.pause()
+        assertEquals("special-1", progressEvents.last().episodeSlug)
+    }
+
+    @Test
+    fun serverSwitchToEmptyServerClearsPreviousNativePlayback() = runTest {
+        val controller = FakePlaybackController(position = 72_000L)
+        val detail = detail().copy(servers = detail().servers + Server("Empty", emptyList()))
+        val viewModel = playerViewModel(controller, detail)
+        viewModel.start(PlayerSelection("movie", "episode-2", 0, "Server A"))
+        runCurrent()
+        controller.play()
+        val previousGeneration = viewModel.state.value.sourceGeneration
+
+        viewModel.switchServer(2)
+        controller.emitStatus(previousGeneration, EnginePlaybackStatus.READY)
+
+        assertEquals(1, controller.releaseCalls)
+        assertEquals(1, controller.stopCalls)
+        assertEquals("Empty", viewModel.state.value.serverName)
+        assertNull(viewModel.state.value.episodeSlug)
+        assertEquals(PlaybackSource.Missing, viewModel.state.value.source)
+        assertEquals(PlaybackBackend.Unavailable, viewModel.state.value.backend)
+        assertEquals(PlaybackStatus.UNSUPPORTED, viewModel.state.value.playbackStatus)
+        assertFalse(viewModel.state.value.isPlaying)
+        assertEquals(0L, viewModel.state.value.positionMs)
+        assertTrue(viewModel.state.value.sourceGeneration > previousGeneration)
+    }
+
+    @Test
+    fun serverSwitchToInvalidSourceReleasesPreviousNativePlayback() = runTest {
+        val controller = FakePlaybackController(position = 72_000L)
+        val detail = detail().copy(
+            servers = detail().servers + Server(
+                "Invalid",
+                listOf(Episode("invalid-1", "Invalid", m3u8Url = "not-a-url")),
             ),
         )
         val viewModel = playerViewModel(controller, detail)
@@ -166,8 +220,15 @@ class PlayerViewModelTest {
 
         viewModel.switchServer(2)
 
-        assertEquals("special-1", viewModel.state.value.episodeSlug)
-        assertEquals(0L, controller.prepares.last().startPositionMs)
+        assertEquals(1, controller.releaseCalls)
+        assertEquals(1, controller.stopCalls)
+        assertEquals("Invalid", viewModel.state.value.serverName)
+        assertEquals("invalid-1", viewModel.state.value.episodeSlug)
+        assertTrue(viewModel.state.value.source is PlaybackSource.Invalid)
+        assertEquals(PlaybackBackend.Unavailable, viewModel.state.value.backend)
+        assertEquals(PlaybackStatus.UNSUPPORTED, viewModel.state.value.playbackStatus)
+        assertFalse(viewModel.state.value.isPlaying)
+        assertEquals(1, controller.prepares.size)
     }
 
     @Test
