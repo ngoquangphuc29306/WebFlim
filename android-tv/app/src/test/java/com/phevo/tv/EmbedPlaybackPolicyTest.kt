@@ -22,7 +22,7 @@ class EmbedPlaybackPolicyTest {
         assertEquals(
             PlaybackBackend.EmbeddedWeb,
             PlaybackBackendResolver.resolve(
-                PlaybackSource.UnsupportedEmbed("https://v8.streamvsmov.com/video/abc"),
+                PlaybackSource.UnsupportedEmbed("https://player.phimapi.com/player/?url=https://media.example/video.m3u8"),
             ),
         )
     }
@@ -39,9 +39,9 @@ class EmbedPlaybackPolicyTest {
 
     @Test
     fun embedPolicyAllowsOnlyHttpsProviderHosts() {
-        assertTrue(EmbedUrlPolicy.validateInitialUrl("https://v8.streamvsmov.com/video/abc") is EmbedUrlPolicy.Decision.Allowed)
         assertTrue(EmbedUrlPolicy.validateInitialUrl("https://player.phimapi.com/player/?url=https://media.example/video.m3u8") is EmbedUrlPolicy.Decision.Allowed)
-        assertTrue(EmbedUrlPolicy.validateInitialUrl("http://v8.streamvsmov.com/video/abc") is EmbedUrlPolicy.Decision.Blocked)
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("https://v8.streamvsmov.com/video/abc") is EmbedUrlPolicy.Decision.Blocked)
+        assertTrue(EmbedUrlPolicy.validateInitialUrl("http://player.phimapi.com/player/video") is EmbedUrlPolicy.Decision.Blocked)
         assertTrue(EmbedUrlPolicy.validateInitialUrl("javascript:alert(1)") is EmbedUrlPolicy.Decision.Blocked)
         assertTrue(EmbedUrlPolicy.validateInitialUrl("https://unrelated.example/video") is EmbedUrlPolicy.Decision.Blocked)
         assertTrue(EmbedUrlPolicy.validateInitialUrl("not a url") is EmbedUrlPolicy.Decision.Blocked)

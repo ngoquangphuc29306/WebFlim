@@ -18,7 +18,6 @@ object PlaybackBackendResolver {
 /** Restricts top-level embed navigation to the provider host family. */
 object EmbedUrlPolicy {
     private val ProviderEmbedDomains = setOf(
-        "streamvsmov.com",
         "player.phimapi.com",
     )
 

@@ -554,7 +554,7 @@ private class TestMovieRepository(
         synopsis = "Real synopsis",
         servers = listOf(
             com.phevo.tv.domain.model.Server(
-                "VSMov",
+                "Vietsub",
                 listOf(
                     com.phevo.tv.domain.model.Episode("episode-1", "Tập 1"),
                     com.phevo.tv.domain.model.Episode("episode-2", "Tập 2"),

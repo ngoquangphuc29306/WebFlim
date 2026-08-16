@@ -29,7 +29,7 @@ interface MovieRepository {
 
     suspend fun getMovieDetail(slug: String): DataResult<MovieDetail>
 
-    /** Resolves only playback fields while preserving the VSMov detail contract. */
+    /** Resolves only playback fields while preserving the provider-neutral detail contract. */
     suspend fun resolvePlaybackEpisode(
         detail: MovieDetail,
         server: Server,

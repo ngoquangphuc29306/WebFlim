@@ -37,7 +37,7 @@ object CatalogResolver {
             if (normalized.type != null) {
                 return CatalogResolution(
                     supported = false,
-                    reason = "Year + type is not directly supported by the current VSMov catalog contract.",
+                    reason = "Year + type is not directly supported by the current catalog contract.",
                 )
             }
             return CatalogResolution(true, CatalogRequest(CatalogEndpoint.YEAR, year.toString(), normalized))
