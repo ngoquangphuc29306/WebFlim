@@ -97,8 +97,6 @@ private fun DetailContent(
     val relatedFocusRequester = remember(detail.movie.movieSlug) { FocusRequester() }
     val relatedFocusRequesters = remember(detail.movie.movieSlug) { mutableStateMapOf<String, FocusRequester>() }
     val relatedListState = rememberLazyListState()
-    val relatedUpFocusRequester = if (detail.servers.isNotEmpty()) serverFocusRequester else contentFocusRequester
-
     LaunchedEffect(detail.movie.movieSlug, relatedMovies, logicalFocus) {
         val targetSlug = logicalFocus.selectedItemId
         val targetIndex = relatedMovies.indexOfFirst { it.movieSlug == targetSlug }
@@ -272,7 +270,7 @@ private fun DetailContent(
                     Spacer(Modifier.height(PhevoTvDimensions.SpaceMD))
                     LazyRow(
                         Modifier.fillMaxWidth().focusGroup().focusProperties {
-                            up = relatedUpFocusRequester
+                            up = FocusRequester.Default
                         },
                         contentPadding = PaddingValues(end = PhevoTvDimensions.SafeAreaHorizontal),
                         horizontalArrangement = Arrangement.spacedBy(PhevoTvDimensions.SpaceMD),
@@ -290,9 +288,9 @@ private fun DetailContent(
                                 modifier = Modifier
                                     .focusRequester(movieFocusRequester)
                                     .focusProperties {
-                                        up = relatedUpFocusRequester
-                                        if (index == 0) left = railFocusRequester
-                                    },
+                                         up = FocusRequester.Default
+                                         if (index == 0) left = railFocusRequester
+                                     },
                             )
                         }
                     }
